@@ -70,8 +70,11 @@ class MainActivity : Activity() {
     }
 
     private fun injectEnhancements(view: WebView) {
-        val script = assets.open("enhancements.js").bufferedReader().use { it.readText() }
-        view.evaluateJavascript(script, null)
+        val enhancements = assets.open("enhancements.js").bufferedReader().use { it.readText() }
+        val screenshotQuiz = assets.open("screenshot-quiz.js").bufferedReader().use { it.readText() }
+        view.evaluateJavascript(enhancements) {
+            view.evaluateJavascript(screenshotQuiz, null)
+        }
     }
 
     @Deprecated("Deprecated by Android, retained for WebView file chooser compatibility")

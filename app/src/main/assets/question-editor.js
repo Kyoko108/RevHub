@@ -150,9 +150,8 @@
   const priorRenderPractice = renderPractice;
   renderPractice = function() { priorRenderPractice(); ensureOrderButton(); const q=filteredQuestions()[practiceIndex],card=$('practiceCard'); if(!q||!card)return; let holder=$('rhPracticeImages'); if(!holder){holder=document.createElement('div');holder.id='rhPracticeImages';card.querySelector('.question')?.insertAdjacentElement('afterend',holder);} holder.replaceChildren();
     function showImage(id,target,alt){if(!id)return;assetGet(id).then(blob=>{if(!blob||!target.isConnected)return;const img=document.createElement('img');img.alt=alt;img.src=URL.createObjectURL(blob);target.append(img);});}
-    showImage(q.sourceScreenshotId,holder,'Original full question screenshot');
-    if (q.questionImageId && q.questionImageId !== q.sourceScreenshotId) showImage(q.questionImageId,holder,'Separate question illustration');
-    card.querySelectorAll('[name="practiceChoice"]').forEach((input,index)=>{const id=q.optionImageIds&&q.optionImageIds[index];if(!id)return;const wrap=input.parentElement;let box=wrap.querySelector('.rh-option-image');if(!box){box=document.createElement('div');box.className='rh-option-image';wrap.append(box);}showImage(id,box,'Option illustration');});
+    showImage(q.questionImageId,holder,'Cropped question diagram');
+    card.querySelectorAll('[name="practiceChoice"]').forEach((input,index)=>{const id=q.optionImageIds&&q.optionImageIds[index];if(!id)return;const wrap=input.parentElement;let box=wrap.querySelector('.rh-option-image');if(!box){box=document.createElement('div');box.className='rh-option-image';wrap.append(box);}showImage(id,box,'Cropped diagram for this option');});
   };
   try { renderPractice(); } catch (_) { /* app data may still be initializing */ }
 })();

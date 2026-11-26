@@ -53,15 +53,17 @@ class MainActivity : Activity() {
             ): Boolean {
                 this@MainActivity.filePathCallback?.onReceiveValue(null)
                 this@MainActivity.filePathCallback = filePathCallback
-                val intent = fileChooserParams.createIntent().apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "*/*"
-                }
+
+                // Preserve the HTML input's image/* filter and multiple-selection mode.
+                // Android's system picker grants access only to items the user selects;
+                // the app does not request broad photo or storage permissions.
+                val intent = fileChooserParams.createIntent()
                 return try {
                     startActivityForResult(intent, filePickerRequest)
                     true
                 } catch (_: Exception) {
                     this@MainActivity.filePathCallback = null
+                    filePathCallback.onReceiveValue(null)
                     false
                 }
             }

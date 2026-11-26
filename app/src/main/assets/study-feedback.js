@@ -14,6 +14,7 @@
     #revisionRegistry .registry-title { font-weight:650; overflow-wrap:anywhere; }
     #revisionRegistry .registry-actions { display:flex; flex-wrap:wrap; gap:7px; }
     #revisionRegistry .registry-status { color:var(--muted,#9ba8bb); font-size:.85em; }
+    #quizTimingSummary { line-height:1.55; }
     @media(prefers-reduced-motion:reduce) { #rhFeedbackWave.play { animation-duration:1ms; } }
   `;
   document.head.appendChild(style);
@@ -125,10 +126,35 @@
     });
   }
 
+  function renderQuizTimingSummary() {
+    const performance = $('performance');
+    if (!performance) return;
+    let summary = $('quizTimingSummary');
+    if (!summary) {
+      summary = document.createElement('div');
+      summary.id = 'quizTimingSummary';
+      summary.className = 'section';
+      summary.innerHTML = '<h3>Quiz timing & mistakes</h3><p class="muted small"></p>';
+      const history = $('historyList')?.parentElement;
+      history?.insertAdjacentElement('beforebegin', summary);
+    }
+    const attempts = (data.attempts || []).filter(attempt => attempt.result === 'right' || attempt.result === 'wrong');
+    const wrong = attempts.filter(attempt => attempt.result === 'wrong').length;
+    const average = attempts.length ? Math.round(attempts.reduce((sum, attempt) => sum + (Number(attempt.seconds) || 0), 0) / attempts.length) : 0;
+    summary.querySelector('p').textContent = attempts.length
+      ? `${attempts.length} answered · ${wrong} wrong · average ${fmt(average)} per question. Individual times are listed in Question history.`
+      : 'Answer quiz questions to see your total wrong answers and average time per question.';
+  }
+
   const priorRenderLibrary = renderLibrary;
   renderLibrary = function () {
     priorRenderLibrary();
     renderRegistry();
   };
-  try { renderLibrary(); } catch (_) { /* app data may still be loading */ }
+  const priorRenderPerformance = renderPerformance;
+  renderPerformance = function () {
+    priorRenderPerformance();
+    renderQuizTimingSummary();
+  };
+  try { renderLibrary(); renderQuizTimingSummary(); } catch (_) { /* app data may still be loading */ }
 })();

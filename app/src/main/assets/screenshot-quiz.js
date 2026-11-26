@@ -6,8 +6,7 @@
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const DUPLICATE_MODE_KEY = 'rh-screenshot-duplicate-mode';
   const mode = () => localStorage.getItem(DUPLICATE_MODE_KEY) || 'manual';
-  const cleanQuestion = text => String(text || '').toLowerCase()
-    .replace(/^[\s\d.)-]+/, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const cleanQuestion = text => String(text || '').toLowerCase().replace(/^[\s\d.)-]+/, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
   const similarity = (a, b) => {
     const left = new Set(cleanQuestion(a).split(' ').filter(Boolean));
     const right = new Set(cleanQuestion(b).split(' ').filter(Boolean));
@@ -20,11 +19,10 @@
   const style = document.createElement('style');
   style.textContent = `
     #screenshotQuizDialog { position:fixed; inset:0; z-index:10001; display:grid; place-items:center; padding:16px; background:#080b12dd; }
-    #screenshotQuizDialog[hidden] { display:none; }
-    #screenshotQuizDialog .sq-card { width:min(620px,100%); max-height:90vh; overflow:auto; padding:22px; border:1px solid var(--line,#39445a); border-radius:18px; background:var(--panel,#171e2c); color:var(--text,#f3f5fa); }
-    #screenshotQuizDialog textarea,#screenshotQuizDialog input[type=text] { width:100%; margin:7px 0 14px; padding:12px; border-radius:10px; border:1px solid var(--line,#39445a); background:var(--bg,#0d111b); color:var(--text,#f3f5fa); font:inherit; }
+    #screenshotQuizDialog .sq-card { width:min(620px,100%); max-height:90vh; overflow:auto; padding:22px; border:1px solid var(--line,#39445a); border-radius:18px; background:var(--panel,#171e2c); }
+    #screenshotQuizDialog textarea,#screenshotQuizDialog select { width:100%; margin:7px 0 14px; padding:12px; border-radius:10px; border:1px solid var(--line,#39445a); background:var(--bg,#0d111b); color:var(--text,#f3f5fa); font:inherit; }
     #screenshotQuizDialog .sq-choice { display:flex; gap:10px; align-items:flex-start; padding:9px; border-radius:9px; background:var(--panel2,#202a3b); margin:6px 0; }
-    #screenshotQuizDialog .sq-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+    #screenshotQuizDialog .sq-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:16px; }
     #screenshotQuizDialog .sq-hint { color:var(--muted,#9ba8bb); font-size:.9em; }
     #practiceCard .quiz-choice { display:flex; gap:10px; align-items:flex-start; padding:12px; margin:8px 0; border:1px solid var(--line,#2b3548); border-radius:12px; cursor:pointer; }
     #practiceCard .quiz-choice:has(input:checked) { border-color:var(--accent,#a78bfa); background:#a78bfa18; }
@@ -33,14 +31,11 @@
 
   const settings = $('settings');
   if (settings && !$('screenshotSettings')) {
-    settings.insertAdjacentHTML('beforeend', `<div class="section" id="screenshotSettings"><h3>Screenshot question import</h3><p class="muted small">Choose whether matching question screenshots are rejected automatically or reviewed each time.</p><label class="row"><input type="radio" name="duplicateMode" value="auto"> Automatically reject duplicate questions</label><label class="row"><input type="radio" name="duplicateMode" value="manual"> Ask me to keep or reject duplicates</label></div>`);
+    settings.insertAdjacentHTML('beforeend', `<div class="section" id="screenshotSettings"><h3>Screenshot question import</h3><p class="muted small">Select screenshots using Android's system photo picker. RevHub only receives the images you choose.</p><label class="row"><input type="radio" name="duplicateMode" value="auto"> Automatically reject duplicate questions</label><label class="row"><input type="radio" name="duplicateMode" value="manual"> Ask me to keep or reject duplicates</label></div>`);
     document.querySelectorAll('input[name="duplicateMode"]').forEach(input => {
       input.checked = input.value === mode();
       input.addEventListener('change', () => {
-        if (input.checked) {
-          localStorage.setItem(DUPLICATE_MODE_KEY, input.value);
-          toast(input.value === 'auto' ? 'Duplicate screenshots will be rejected automatically.' : 'You will review duplicate screenshots.');
-        }
+        if (input.checked) localStorage.setItem(DUPLICATE_MODE_KEY, input.value);
       });
     });
   }
@@ -62,59 +57,58 @@
   if (addImage) {
     addImage.textContent = '＋ Choose screenshots';
     addImage.onclick = () => {
-      toast('Choose screenshots from your device when the file picker opens.');
+      if (!confirm('RevHub will open the system photo picker. You choose which screenshots the app can access. Continue?')) return;
       $('imageInput')?.click();
     };
   }
 
   function parseScreenshotText(text) {
     const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    const optionPattern = /^\s*([A-Da-d]|[1-4])\s*[).:\-]\s*(.+?)\s*$/;
+    const optionPattern = /^\s*([A-Da-d]|[1-4])[).:\-]\s*(.+?)\s*$/;
     const options = [];
     const stems = [];
     let foundOption = false;
-    let detectedAnswer = '';
-    const explicit = String(text || '').match(/(?:correct\s+answer|answer\s+key|\bans(?:wer)?\b)\s*[:\-]?\s*([A-D1-4])\b/i);
+    let markedAnswer = '';
+    const answerMatch = String(text || '').match(/(?:correct\s+answer|answer\s+key|\bans(?:wer)?\b)\s*[:\-]?\s*([A-D1-4])\b/i);
     for (const line of lines) {
       const match = line.match(optionPattern);
       if (match) {
         foundOption = true;
         let value = match[2].trim();
-        if (/[✓✔☑]|\bcorrect\b/i.test(value)) detectedAnswer = value.replace(/[✓✔☑]/g, '').replace(/\bcorrect\b/ig, '').trim();
-        options.push(value.replace(/[✓✔☑]/g, '').replace(/\s*\(correct\)\s*/ig, '').trim());
+        if (/[✓✔☑]|\bcorrect\b/i.test(value)) markedAnswer = value.replace(/[✓✔☑]/g, '').replace(/\bcorrect\b/ig, '').replace(/\s*\(correct\)\s*/ig, '').trim();
+        options.push(value.replace(/[✓✔☑]/g, '').replace(/\s*\(correct\)\s*/ig, '').replace(/\s+correct\s*$/ig, '').trim());
       } else if (!foundOption && !/^(?:correct\s+answer|answer\s+key|ans(?:wer)?)\s*[:\-]/i.test(line)) {
         stems.push(line);
-      } else if (foundOption && options.length) {
+      } else if (foundOption && options.length && !/^(?:correct\s+answer|answer\s+key|ans(?:wer)?)\s*[:\-]/i.test(line)) {
         options[options.length - 1] += ` ${line}`;
       }
     }
     let answerIndex = -1;
-    if (explicit && options.length) {
-      const index = 'ABCD'.indexOf(explicit[1].toUpperCase());
-      answerIndex = index >= 0 ? index : Number(explicit[1]) - 1;
-    } else if (detectedAnswer) {
-      answerIndex = options.findIndex(option => option === detectedAnswer || option.toLowerCase().includes(detectedAnswer.toLowerCase()));
+    if (answerMatch && options.length) {
+      const key = answerMatch[1].toUpperCase();
+      answerIndex = key >= '1' && key <= '4' ? Number(key) - 1 : key.charCodeAt(0) - 65;
+    } else if (markedAnswer) {
+      answerIndex = options.findIndex(option => option.toLowerCase() === markedAnswer.toLowerCase() || option.toLowerCase().includes(markedAnswer.toLowerCase()));
     }
     if (answerIndex < 0 || answerIndex >= options.length) answerIndex = -1;
     return { question: stems.join(' ').replace(/\s+/g, ' ').trim(), options, answerIndex };
   }
 
-  function reviewScreenshot(parsed, rawText) {
+  function reviewScreenshot(parsed, rawText, fileName) {
     return new Promise(resolve => {
-      const old = $('screenshotQuizDialog');
-      if (old) old.remove();
+      $('screenshotQuizDialog')?.remove();
       const dialog = document.createElement('div');
       dialog.id = 'screenshotQuizDialog';
-      dialog.innerHTML = `<div class="sq-card" role="dialog" aria-modal="true" aria-labelledby="sqTitle"><h2 id="sqTitle">Review screenshot question</h2><p class="sq-hint">OCR can misread text. Confirm the question, choices and correct answer before saving. Correct-answer detection is only suggested when the screenshot contains a readable answer key or check mark.</p><label>Question<textarea id="sqQuestion" rows="3"></textarea></label><label>Answer choices <span class="sq-hint">(one choice per line; use at least two)</span><textarea id="sqOptions" rows="5"></textarea></label><div id="sqAnswerChoices"></div><p id="sqAnswerHint" class="sq-hint"></p><div class="sq-actions"><button type="button" class="secondary" id="sqCancel">Cancel</button><button type="button" id="sqSave">Save question</button></div></div>`;
+      dialog.innerHTML = `<div class="sq-card" role="dialog" aria-modal="true" aria-labelledby="sqTitle"><h2 id="sqTitle">Review screenshot question</h2><p class="sq-hint">${escapeHtml(fileName)} · OCR may misread text. Confirm the question, choices and answer before saving. If the screenshot does not show an answer key or marked choice, select the correct answer yourself.</p><label>Question<textarea id="sqQuestion" rows="3"></textarea></label><label>Answer choices <span class="sq-hint">(one choice per line; enter at least two)</span><textarea id="sqOptions" rows="5"></textarea></label><div id="sqAnswerChoices"></div><p id="sqAnswerHint" class="sq-hint"></p><div class="sq-actions"><button type="button" class="secondary" id="sqCancel">Cancel screenshot</button><button type="button" id="sqSave">Save quiz question</button></div></div>`;
       document.body.appendChild(dialog);
-      $('sqQuestion').value = parsed.question || rawText.trim();
+      $('sqQuestion').value = parsed.question || String(rawText || '').trim();
       $('sqOptions').value = parsed.options.join('\n');
       const refreshAnswers = () => {
         const choices = $('sqOptions').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const prior = dialog.querySelector('input[name="sqAnswer"]:checked');
-        let selected = prior ? Number(prior.value) : parsed.answerIndex;
+        const selected = prior ? Number(prior.value) : parsed.answerIndex;
         $('sqAnswerChoices').innerHTML = choices.map((choice, index) => `<label class="sq-choice"><input type="radio" name="sqAnswer" value="${index}" ${index === selected ? 'checked' : ''}><span>${escapeHtml(choice)}</span></label>`).join('');
-        $('sqAnswerHint').textContent = parsed.answerIndex >= 0 ? 'OCR found a possible marked/keyed answer. Please verify it.' : 'OCR did not reliably identify the correct answer. Select it from the screenshot.';
+        $('sqAnswerHint').textContent = parsed.answerIndex >= 0 ? 'OCR detected a possible answer key or marked choice. Verify it against the screenshot.' : 'OCR did not reliably identify the correct answer. Please select it using the screenshot.';
       };
       $('sqOptions').addEventListener('input', refreshAnswers);
       refreshAnswers();
@@ -123,8 +117,8 @@
         const question = $('sqQuestion').value.trim();
         const options = $('sqOptions').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const selected = dialog.querySelector('input[name="sqAnswer"]:checked');
-        if (!question || options.length < 2 || !selected) {
-          toast('Enter a question, at least two choices, and select the correct answer.');
+        if (!question || options.length < 2 || !selected || Number(selected.value) >= options.length) {
+          toast('Enter a question, at least two answer choices, and select the correct answer.');
           return;
         }
         dialog.remove();
@@ -133,48 +127,83 @@
     });
   }
 
+  function chooseSubject() {
+    const choices = [...new Set([...(data.subjects || []), '＋ Add a new subject'])];
+    const selected = prompt(`Choose a subject for the selected screenshot(s) by entering its number:\n${choices.map((name, index) => `${index + 1}. ${name}`).join('\n')}`, '1');
+    if (selected === null) return null;
+    const index = Number(selected) - 1;
+    if (Number.isInteger(index) && index >= 0 && index < choices.length - 1) return choices[index];
+    if (Number.isInteger(index) && index === choices.length - 1) {
+      const newSubject = prompt('Enter the new subject name');
+      if (!newSubject?.trim()) return null;
+      const subject = newSubject.trim();
+      if (!data.subjects.includes(subject)) data.subjects.push(subject);
+      return subject;
+    }
+    toast('Enter a valid subject number.');
+    return null;
+  }
+
+  async function extractScreenshotOCR(file) {
+    try {
+      if (!window.Tesseract) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      const result = await Tesseract.recognize(file, 'eng');
+      return result.data.text.trim();
+    } catch (error) {
+      console.warn('Screenshot OCR failed', error);
+      return '';
+    }
+  }
+
   const imageInput = $('imageInput');
   if (imageInput) imageInput.onchange = async event => {
-    const files = Array.from(event.target.files || []);
+    const input = event.target;
+    const files = Array.from(input.files || []).filter(file => file.type.startsWith('image/'));
+    if (!files.length) { input.value = ''; return; }
+    const subject = chooseSubject();
+    if (!subject) { input.value = ''; return; }
     let saved = 0;
-    for (const file of files) {
-      let subject = prompt(`Subject for this screenshot:\n${data.subjects.join(', ')}`, data.subjects[0] || 'General');
-      if (!subject) continue;
-      subject = subject.trim();
-      if (!subject) continue;
-      if (!data.subjects.includes(subject)) data.subjects.push(subject);
-      toast(`Reading screenshot: ${file.name}`);
-      const rawText = await extractOCR(file);
-      if (!rawText) {
-        if (!confirm('OCR could not read this image. Continue and enter the question and choices manually?')) continue;
-      }
-      const parsed = parseScreenshotText(rawText);
-      const reviewed = await reviewScreenshot(parsed, rawText || '');
-      if (!reviewed) continue;
-      const duplicate = data.questions.find(question => similarity(question.text, reviewed.question) >= 0.86);
-      if (duplicate) {
-        const duplicateMessage = `This question appears to match an existing question in ${duplicate.subject}.`;
-        if (mode() === 'auto') {
-          toast(`Duplicate rejected: ${duplicateMessage}`);
-          continue;
+    try {
+      for (const file of files) {
+        toast(`Reading screenshot ${saved + 1} of ${files.length}: ${file.name}`);
+        const rawText = await extractScreenshotOCR(file);
+        if (!rawText) toast('OCR could not read this image. You can enter the question and choices manually.');
+        const reviewed = await reviewScreenshot(parseScreenshotText(rawText), rawText, file.name);
+        if (!reviewed) continue;
+        const duplicate = data.questions.find(question => similarity(question.text, reviewed.question) >= 0.86);
+        if (duplicate) {
+          const message = `This question may duplicate one already saved under ${duplicate.subject}.`;
+          if (mode() === 'auto' || !confirm(`${message}\n\nKeep another copy?`)) {
+            toast(mode() === 'auto' ? `Duplicate skipped: ${message}` : 'Duplicate screenshot skipped.');
+            continue;
+          }
         }
-        if (!confirm(`${duplicateMessage}\n\nKeep this screenshot as another copy? Choose Cancel to reject it.`)) {
-          toast('Duplicate screenshot rejected.');
-          continue;
-        }
+        const id = crypto.randomUUID();
+        await assetPut(id, file);
+        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, image: true, sourceName: file.name, duplicateOf: duplicate?.id || null });
+        saved++;
+        save();
       }
-      const answer = reviewed.options[reviewed.answerIndex];
-      const id = crypto.randomUUID();
-      await assetPut(id, file);
-      data.questions.push({ id, subject, text: reviewed.question, answer, options: reviewed.options, image: true, duplicateOf: duplicate?.id || null });
-      saved++;
+      renderLibrary();
+      if (saved) toast(`${saved} screenshot${saved === 1 ? '' : 's'} saved as ${saved === 1 ? 'a quiz question' : 'quiz questions'} in ${subject}.`);
+    } catch (error) {
+      console.error('Screenshot import failed', error);
+      toast('Could not import this screenshot. Please try selecting it again.');
+    } finally {
+      input.value = '';
     }
-    save(); renderLibrary();
-    if (saved) toast(`${saved} screenshot question${saved === 1 ? '' : 's'} added as radio-button quiz${saved === 1 ? '' : 'zes'}.`);
-    event.target.value = '';
   };
 
-  // Radio-button answer rendering uses the app's existing question data and checker.
+  // Use native radio controls for multiple-choice practice. The existing answer
+  // checker records elapsed seconds and right/wrong outcomes in data.attempts.
   renderPractice = function () {
     if (!$('practiceFilter').options.length) $('practiceFilter').innerHTML = subjectsOptions();
     const questions = filteredQuestions();
@@ -193,7 +222,6 @@
     $('submitQ').disabled = false;
   };
 
-  // Keep the new subject topic group visible and retain compatibility with saved data.
   const oldRenderLibrary = renderLibrary;
   renderLibrary = function () {
     if (typeof oldRenderLibrary === 'function') oldRenderLibrary();
@@ -210,6 +238,5 @@
       }
     });
   };
-
-  try { renderLibrary(); } catch (_) { /* page may still be initializing */ }
+  try { renderLibrary(); } catch (_) { /* app data may still be initializing */ }
 })();

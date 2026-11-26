@@ -1,0 +1,41 @@
+diff --git a/app/src/main/assets/ui-polish.js b/app/src/main/assets/ui-polish.js
+index dd02834..ccba327 100644
+--- a/app/src/main/assets/ui-polish.js
++++ b/app/src/main/assets/ui-polish.js
+@@ -41,13 +41,13 @@
+     }
+     .logo,
+     .hero,
+-    button:not(.secondary):not(.ghost):not(.danger) {
+-      background-image: linear-gradient(135deg,#e74689 0%,#b14db5 48%,#7654d8 100%);
++    button:not(.secondary):not(.ghost):not(.danger):not(.nav button) {
++      background-image: linear-gradient(135deg,#e64a7d 0%,#ae50a8 50%,#7557d2 100%);
+       background-size: 220% 220%;
+       animation: revhub-pink-purple-flow 9s ease-in-out infinite;
+     }
+     @media (prefers-reduced-motion: reduce) {
+-      .logo, .hero, button:not(.secondary):not(.ghost):not(.danger) {
++      .logo, .hero, button:not(.secondary):not(.ghost):not(.danger):not(.nav button) {
+         animation: none;
+         background-position: 50% 50%;
+       }
+diff --git a/app/src/main/java/com/revisionhub/app/MainActivity.kt b/app/src/main/java/com/revisionhub/app/MainActivity.kt
+index 21df2cb..e17e34b 100644
+--- a/app/src/main/java/com/revisionhub/app/MainActivity.kt
++++ b/app/src/main/java/com/revisionhub/app/MainActivity.kt
+@@ -83,11 +83,14 @@ class MainActivity : Activity() {
+         val studyFeedback = assets.open("study-feedback.js").bufferedReader().use { it.readText() }
+         val questionEditor = assets.open("question-editor.js").bufferedReader().use { it.readText() }
+         val screenLayout = assets.open("screen-layout.js").bufferedReader().use { it.readText() }
++        val uiPolish = assets.open("ui-polish.js").bufferedReader().use { it.readText() }
+         view.evaluateJavascript(enhancements) {
+             view.evaluateJavascript(screenshotQuiz) {
+                 view.evaluateJavascript(studyFeedback) {
+                     view.evaluateJavascript(questionEditor) {
+-                        view.evaluateJavascript(screenLayout, null)
++                        view.evaluateJavascript(screenLayout) {
++                            view.evaluateJavascript(uiPolish, null)
++                        }
+                     }
+                 }
+             }

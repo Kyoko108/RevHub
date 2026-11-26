@@ -37,6 +37,13 @@ class MainActivity : Activity() {
                 val uri = request.url
                 return uri.scheme != "file" && uri.scheme != "https" && uri.scheme != "http"
             }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                if (url == "file:///android_asset/index.html") {
+                    injectEnhancements(view)
+                }
+            }
         }
         webView.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(
@@ -60,7 +67,11 @@ class MainActivity : Activity() {
             }
         }
         webView.loadUrl("file:///android_asset/index.html")
+    }
 
+    private fun injectEnhancements(view: WebView) {
+        val script = assets.open("enhancements.js").bufferedReader().use { it.readText() }
+        view.evaluateJavascript(script, null)
     }
 
     @Deprecated("Deprecated by Android, retained for WebView file chooser compatibility")

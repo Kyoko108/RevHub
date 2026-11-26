@@ -6,6 +6,7 @@
   const GATE_ENABLED_KEY = 'rh-study-gate-enabled';
   const GATE_LOCKED_KEY = 'rh-study-gate-locked';
   let gateLocked = localStorage.getItem(GATE_LOCKED_KEY) === 'true';
+  let completionHandled = false;
 
   if (!data.daily) data.daily = { date: new Date().toLocaleDateString(), seconds: 0 };
   if (!Number.isFinite(data.daily.sessions)) data.daily.sessions = 0;
@@ -20,6 +21,8 @@
     #studyGate .row { justify-content:center; }
     #studyGate button { margin:5px; }
     #conceptDone { margin-top:12px; width:100%; }
+    .logo { font-size:0 !important; position:relative; }
+    .logo::after { content:'R'; font-size:22px; font-weight:900; color:#10131d; }
   `;
   document.head.appendChild(style);
 
@@ -30,12 +33,8 @@
   document.body.appendChild(gate);
 
   function gateEnabled() { return localStorage.getItem(GATE_ENABLED_KEY) === 'true'; }
-  function showGate() {
-    gate.classList.remove('hidden');
-  }
-  function hideGate() {
-    gate.classList.add('hidden');
-  }
+  function showGate() { gate.classList.remove('hidden'); }
+  function hideGate() { gate.classList.add('hidden'); }
   function unlock(reason) {
     if (!gateLocked) return;
     gateLocked = false;
@@ -71,21 +70,24 @@
   };
 
   function refreshSessionUI() {
-    const stats = document.querySelectorAll('#home .stat');
-    if (stats.length > 1) {
-      const value = stats[1].querySelector('b');
-      const label = stats[1].querySelector('span');
-      if (value) value.textContent = String(data.daily.sessions || 0);
-      if (label) label.textContent = 'SESSIONS TODAY';
+    const home = document.getElementById('home');
+    if (home) {
+      const stats = home.querySelectorAll('.stat');
+      if (stats.length > 1) {
+        const value = stats[1].querySelector('b');
+        const label = stats[1].querySelector('span');
+        if (value) value.textContent = String(data.daily.sessions || 0);
+        if (label) label.textContent = 'NO. OF 90 MINUTE SESSIONS';
+      }
     }
     const progress = document.getElementById('dailyBar');
     if (progress) progress.style.width = `${Math.min(100, (data.daily.seconds / SESSION_SECONDS) * 100)}%`;
-    const limits = document.querySelector('#settings .section');
-    if (limits) {
-      const heading = [...limits.querySelectorAll('h3')].find(item => item.textContent.includes('Study limits'));
+    const settings = document.getElementById('settings');
+    if (settings) {
+      const heading = [...settings.querySelectorAll('h3')].find(item => item.textContent.includes('Study limits'));
       if (heading) {
         const firstParagraph = heading.parentElement.querySelector('p') || heading.nextElementSibling;
-        if (firstParagraph) firstParagraph.innerHTML = `Work sessions completed today: <b>${data.daily.sessions || 0}</b>. Each session is 90 minutes.`;
+        if (firstParagraph) firstParagraph.innerHTML = `No. of 90 minute sessions completed today: <b>${data.daily.sessions || 0}</b>. Each session is 90 minutes.`;
       }
     }
   }
@@ -95,6 +97,11 @@
     originalRenderHome();
     refreshSessionUI();
   };
+
+  // Keep the updated session label even if the original page refreshes its dashboard.
+  const homeObserver = new MutationObserver(refreshSessionUI);
+  const home = document.getElementById('home');
+  if (home) homeObserver.observe(home, { childList: true, subtree: true, characterData: true });
 
   const settings = document.getElementById('settings');
   settings.insertAdjacentHTML('beforeend', `<div class="section" id="studyGateSettings"><h3>Study-to-unlock</h3><label><input id="studyGateToggle" type="checkbox"> Require a revision or a correct quiz answer after each 90-minute session</label><p class="muted small">This only gates access inside RevHub. Android does not allow this app to control the whole phone lock screen.</p></div>`);
@@ -110,7 +117,6 @@
     toast(gateToggle.checked ? 'Study-to-unlock enabled for RevHub.' : 'Study-to-unlock disabled.');
   });
 
-  const revision = document.getElementById('revision');
   const conceptButton = document.createElement('button');
   conceptButton.id = 'conceptDone';
   conceptButton.textContent = 'I revised this concept — unlock RevHub';
@@ -142,7 +148,8 @@
   }, 0));
 
   setInterval(() => {
-    if (data.daily.seconds >= SESSION_SECONDS) {
+    if (data.daily.seconds >= SESSION_SECONDS && !completionHandled) {
+      completionHandled = true;
       data.daily.sessions = (data.daily.sessions || 0) + 1;
       data.daily.seconds = 0;
       appActive = true;
@@ -153,6 +160,8 @@
         localStorage.setItem(GATE_LOCKED_KEY, 'true');
         showGate();
       }
+    } else if (data.daily.seconds < SESSION_SECONDS) {
+      completionHandled = false;
     }
     refreshSessionUI();
   }, 1000);

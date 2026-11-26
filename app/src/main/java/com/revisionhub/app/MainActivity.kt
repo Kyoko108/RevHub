@@ -83,11 +83,14 @@ class MainActivity : Activity() {
         val studyFeedback = assets.open("study-feedback.js").bufferedReader().use { it.readText() }
         val questionEditor = assets.open("question-editor.js").bufferedReader().use { it.readText() }
         val screenLayout = assets.open("screen-layout.js").bufferedReader().use { it.readText() }
+        val uiPolish = assets.open("ui-polish.js").bufferedReader().use { it.readText() }
         view.evaluateJavascript(enhancements) {
             view.evaluateJavascript(screenshotQuiz) {
                 view.evaluateJavascript(studyFeedback) {
                     view.evaluateJavascript(questionEditor) {
-                        view.evaluateJavascript(screenLayout, null)
+                        view.evaluateJavascript(screenLayout) {
+                            view.evaluateJavascript(uiPolish, null)
+                        }
                     }
                 }
             }

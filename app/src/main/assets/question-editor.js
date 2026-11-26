@@ -18,6 +18,10 @@
     #rhOptionOrder .rh-option-row { display:grid; grid-template-columns:34px 1fr auto auto; gap:6px; align-items:center; padding:7px; border:1px solid rgba(31,41,55,.13); border-radius:10px; background:rgba(255,255,255,.84); }
     #rhOptionOrder input { margin:0; }
     #rhOptionOrder button { min-width:34px; padding:8px; }
+    #rhOptionOrder .rh-option-image-tools{grid-column:2/-1;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    #rhOptionOrder .rh-option-image-tools img,#rhQuestionImagePreview img{max-width:100px;max-height:72px;object-fit:contain;border-radius:7px}
+    #rhQuestionImagePreview{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+    #practiceEditActions{display:flex;flex-wrap:nowrap;gap:9px}#practiceEditActions>button{flex:1;min-width:0;font-size:13px;padding:10px 8px}
     #rhQuestionEditor .rh-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
     #rhQuestionEditor .rh-hint { color:#4b5563; font-size:.9rem; }
     #rhQuestionEditor button { color:#fff; }
@@ -38,33 +42,47 @@
     $('rhQuestionEditor')?.remove();
     const dialog = document.createElement('div');
     dialog.id = 'rhQuestionEditor';
-    dialog.innerHTML = `<section class="rh-editor-card" role="dialog" aria-modal="true"><h2>Edit screenshot question</h2><p class="rh-hint">Edit the question and solution text, then use the arrows to arrange options in the desired order.</p><label>Question<textarea id="rhEditQuestion" rows="4"></textarea></label><label>Answer options and order</label><div id="rhOptionOrder"></div><label>Solution<textarea id="rhEditSolution" rows="7"></textarea></label><div class="rh-actions"><button type="button" class="secondary" id="rhCancelEdit">Cancel</button><button type="button" id="rhSaveEdit">Save changes</button></div></section>`;
+    dialog.innerHTML = `<section class="rh-editor-card" role="dialog" aria-modal="true"><h2>Edit screenshot question</h2><p class="rh-hint">Edit the question and solution text, then use the arrows to arrange options in the desired order.</p><label>Question<textarea id="rhEditQuestion" rows="4"></textarea></label><div class="rh-actions" style="justify-content:flex-start"><button type="button" class="secondary" id="rhQuestionCrop">Crop / replace question diagram</button><button type="button" class="secondary" id="rhQuestionClearImage">Remove diagram</button></div><div id="rhQuestionImagePreview" class="rh-hint"></div><label>Answer options, images and order</label><div id="rhOptionOrder"></div><label>Solution<textarea id="rhEditSolution" rows="7"></textarea></label><div class="rh-actions"><button type="button" class="secondary" id="rhCancelEdit">Cancel</button><button type="button" id="rhSaveEdit">Save changes</button></div></section>`;
     document.body.appendChild(dialog);
     $('rhEditQuestion').value = question.text || '';
     $('rhEditSolution').value = question.solution || '';
 
     let options = [...(question.options || [])];
+    let optionImageIds = [...(question.optionImageIds || [])];
+    while (optionImageIds.length < options.length) optionImageIds.push(null);
+    let questionImageId = question.questionImageId || null;
     let correctIndex = options.findIndex(option => option === question.answer);
+    const previewImage = async (id, target) => { target.replaceChildren(); if(!id)return; const blob=await assetGet(id); if(!blob||!target.isConnected)return; const img=document.createElement('img');img.src=URL.createObjectURL(blob);target.append(img); };
+    async function cropImageFile(file, done) {
+      const url=URL.createObjectURL(file), img=new Image(); img.onload=()=>{
+        const layer=document.createElement('div');layer.className='rh-modal';layer.style.zIndex='10006';
+        layer.innerHTML='<section class="rh-modal-card" style="width:min(760px,100%)"><h3>Crop diagram</h3><p class="rh-hint">Drag around only the diagram or figure, then choose Use crop.</p><canvas id="rhEditCropCanvas" style="display:block;width:100%;max-height:55dvh;touch-action:none;border:1px solid #9ca3af;border-radius:10px;background:#fff"></canvas><div class="rh-actions"><button type="button" class="secondary" id="rhEditCropCancel">Cancel</button><button type="button" id="rhEditCropApply">Use crop</button></div></section>';
+        document.body.append(layer); const canvas=layer.querySelector('canvas'),ctx=canvas.getContext('2d');let start=null,rect=null;
+        const scale=Math.min(1,1100/img.naturalWidth);canvas.width=Math.round(img.naturalWidth*scale);canvas.height=Math.round(img.naturalHeight*scale);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        const pos=ev=>{const b=canvas.getBoundingClientRect();return{x:(ev.clientX-b.left)*canvas.width/b.width,y:(ev.clientY-b.top)*canvas.height/b.height};};
+        canvas.onpointerdown=ev=>{start=pos(ev);canvas.setPointerCapture(ev.pointerId);};canvas.onpointermove=ev=>{if(!start)return;const p=pos(ev);rect={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(start.x-p.x),h:Math.abs(start.y-p.y)};ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.strokeStyle='#f97316';ctx.lineWidth=3;ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);};canvas.onpointerup=()=>{start=null;};
+        layer.querySelector('#rhEditCropCancel').onclick=()=>{URL.revokeObjectURL(url);layer.remove();};
+        layer.querySelector('#rhEditCropApply').onclick=()=>{if(!rect||rect.w<8||rect.h<8){toast('Select the diagram area first.');return;}const ratio=img.naturalWidth/canvas.width,out=document.createElement('canvas');out.width=Math.round(rect.w*ratio);out.height=Math.round(rect.h*ratio);out.getContext('2d').drawImage(img,Math.round(rect.x*ratio),Math.round(rect.y*ratio),out.width,out.height,0,0,out.width,out.height);out.toBlob(blob=>{if(blob){done(new File([blob],'cropped-diagram.png',{type:'image/png'}));layer.remove();}URL.revokeObjectURL(url);},'image/png');};
+      }; img.src=url;
+    }
+    function chooseCrop(done) { const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=()=>{const file=input.files?.[0];if(file)cropImageFile(file,done);};input.click(); }
+    $('rhQuestionCrop').onclick=()=>chooseCrop(async file=>{questionImageId=crypto.randomUUID();await assetPut(questionImageId,file);previewImage(questionImageId,$('rhQuestionImagePreview'));});
+    $('rhQuestionClearImage').onclick=()=>{questionImageId=null;$('rhQuestionImagePreview').textContent='No question diagram attached';};
+    previewImage(questionImageId,$('rhQuestionImagePreview'));
 
     function renderOptions() {
-      const container = $('rhOptionOrder');
-      container.replaceChildren();
-      options.forEach((option, index) => {
-        const row = document.createElement('div');
-        row.className = 'rh-option-row';
-        const radio = document.createElement('input');
-        radio.type = 'radio'; radio.name = 'rhCorrectOption'; radio.checked = index === correctIndex;
-        radio.setAttribute('aria-label', `Mark option ${index + 1} as correct`);
-        radio.addEventListener('change', () => { correctIndex = index; });
-        const field = document.createElement('input');
-        field.type = 'text'; field.value = option; field.setAttribute('aria-label', `Option ${index + 1}`);
-        field.addEventListener('input', () => { options[index] = field.value; });
-        const up = document.createElement('button'); up.type = 'button'; up.className = 'secondary'; up.textContent = '↑'; up.disabled = index === 0; up.setAttribute('aria-label', `Move option ${index + 1} up`);
-        up.addEventListener('click', () => moveOption(index, -1));
-        const down = document.createElement('button'); down.type = 'button'; down.className = 'secondary'; down.textContent = '↓'; down.disabled = index === options.length - 1; down.setAttribute('aria-label', `Move option ${index + 1} down`);
-        down.addEventListener('click', () => moveOption(index, 1));
-        row.append(radio, field, up, down);
-        container.appendChild(row);
+      const container=$('rhOptionOrder');container.replaceChildren();
+      options.forEach((option,index)=>{
+        const row=document.createElement('div');row.className='rh-option-row';
+        const radio=document.createElement('input');radio.type='radio';radio.name='rhCorrectOption';radio.checked=index===correctIndex;radio.setAttribute('aria-label',`Mark option ${index+1} as correct`);radio.onchange=()=>{correctIndex=index;};
+        const field=document.createElement('input');field.type='text';field.value=option;field.setAttribute('aria-label',`Option ${index+1}`);field.oninput=()=>{options[index]=field.value;};
+        const up=document.createElement('button');up.type='button';up.className='secondary';up.textContent='↑';up.disabled=index===0;up.onclick=()=>moveOption(index,-1);
+        const down=document.createElement('button');down.type='button';down.className='secondary';down.textContent='↓';down.disabled=index===options.length-1;down.onclick=()=>moveOption(index,1);
+        const tools=document.createElement('div');tools.className='rh-option-image-tools';
+        const crop=document.createElement('button');crop.type='button';crop.className='secondary';crop.textContent=optionImageIds[index]?'Replace / recrop image':'＋ Crop option image';crop.onclick=()=>chooseCrop(async file=>{optionImageIds[index]=crypto.randomUUID();await assetPut(optionImageIds[index],file);renderOptions();});
+        const clear=document.createElement('button');clear.type='button';clear.className='secondary';clear.textContent='Remove image';clear.disabled=!optionImageIds[index];clear.onclick=()=>{optionImageIds[index]=null;renderOptions();};
+        tools.append(crop,clear);if(optionImageIds[index]){const img=document.createElement('img');tools.append(img);assetGet(optionImageIds[index]).then(blob=>{if(blob&&img.isConnected)img.src=URL.createObjectURL(blob);});}
+        row.append(radio,field,up,down,tools);container.append(row);
       });
     }
 
@@ -72,6 +90,7 @@
       const target = index + delta;
       if (target < 0 || target >= options.length) return;
       [options[index], options[target]] = [options[target], options[index]];
+      [optionImageIds[index], optionImageIds[target]] = [optionImageIds[target], optionImageIds[index]];
       if (correctIndex === index) correctIndex = target;
       else if (correctIndex === target) correctIndex = index;
       renderOptions();
@@ -89,7 +108,10 @@
       if (editedOptions.length < 2) { toast('A question needs at least two options.'); return; }
       if (correctIndex < 0 || correctIndex >= editedOptions.length) { toast('Select the correct option.'); return; }
       question.text = text;
+      if (options.some(option => !String(option).trim())) { toast('Remove empty options or fill them in.'); return; }
       question.options = editedOptions;
+      question.optionImageIds = optionImageIds;
+      question.questionImageId = questionImageId;
       question.answer = editedOptions[correctIndex];
       question.solution = solution;
       save();
@@ -119,15 +141,8 @@
     const question = questions[practiceIndex];
     if (!question) return;
     const card = $('practiceCard');
-    let editButton = $('rhEditQuestionButton');
-    if (!editButton) {
-      editButton = document.createElement('button');
-      editButton.id = 'rhEditQuestionButton';
-      editButton.className = 'secondary';
-      editButton.textContent = 'Edit question / option order';
-      card.insertAdjacentElement('afterend', editButton);
-    }
-    editButton.onclick = () => openQuestionEditor(question);
+    const editButton = $('rhEditQuestionButton');
+    if (editButton) editButton.onclick = () => openQuestionEditor(question);
     // Reveal the entire corrected OCR solution only after an answer is selected.
     card.querySelectorAll('input[name="practiceChoice"], [data-choice]').forEach(control => {
       control.addEventListener('change', () => showSolution(question, card));
@@ -146,7 +161,7 @@
     draw(); $('rhOrderCancel').onclick=()=>dialog.remove();
     $('rhOrderSave').onclick=()=>{const ids=new Set(questions.map(q=>q.id));let i=0;data.questions=data.questions.map(q=>ids.has(q.id)?questions[i++]:q);save();practiceIndex=0;renderPractice();dialog.remove();toast('Question order saved.');};
   }
-  function ensureOrderButton() { if ($('rhReorderQuestionsButton')) return; const b=document.createElement('button'); b.id='rhReorderQuestionsButton'; b.className='secondary'; b.textContent='↕ Reorder questions'; $('practiceCard').insertAdjacentElement('afterend',b); b.onclick=openQuestionOrder; }
+  function ensureOrderButton() { const b=$('rhReorderQuestionsButton'); if(b) b.onclick=openQuestionOrder; }
   const priorRenderPractice = renderPractice;
   renderPractice = function() { priorRenderPractice(); ensureOrderButton(); const q=filteredQuestions()[practiceIndex],card=$('practiceCard'); if(!q||!card)return; let holder=$('rhPracticeImages'); if(!holder){holder=document.createElement('div');holder.id='rhPracticeImages';card.querySelector('.question')?.insertAdjacentElement('afterend',holder);} holder.replaceChildren();
     function showImage(id,target,alt){if(!id)return;assetGet(id).then(blob=>{if(!blob||!target.isConnected)return;const img=document.createElement('img');img.alt=alt;img.src=URL.createObjectURL(blob);target.append(img);});}

@@ -22,6 +22,13 @@
     #rhQuestionEditor .rh-hint { color:#4b5563; font-size:.9rem; }
     #rhQuestionEditor button { color:#fff; }
     #rhQuestionEditor button.secondary { color:#111827; background:rgba(255,255,255,.85); border:1px solid rgba(17,24,39,.2); }
+    #rhQuestionOrder { position:fixed; inset:0; z-index:10003; display:grid; place-items:center; padding:16px; background:rgba(5,9,18,.8); }
+    #rhQuestionOrder .rh-order-card { width:min(620px,100%); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; border-radius:18px; background:#f4f1ff; color:#172033; }
+    #rhQuestionOrderList { display:grid; gap:8px; margin-top:12px; }
+    #rhQuestionOrderList .rh-order-row { display:flex; gap:10px; align-items:center; padding:12px; border:1px solid #d7d4e8; border-radius:12px; background:#fff; cursor:grab; }
+    #rhQuestionOrderList .dragging { opacity:.4; }
+    #rhQuestionOrder .rh-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+    #rhPracticeImages img,.rh-option-image img { display:block; max-width:100%; max-height:260px; object-fit:contain; margin:8px auto; border-radius:10px; }
     #rhSolutionReveal { display:none; margin-top:12px; padding:14px; border-left:4px solid #22c55e; border-radius:10px; background:rgba(34,197,94,.10); color:var(--text,#f3f5fa); white-space:pre-wrap; overflow-wrap:anywhere; max-height:min(65vh,680px); overflow:auto; line-height:1.55; }
     @media(prefers-reduced-motion:reduce) { #rhQuestionEditor .rh-editor-card::before { animation:none; } }
   `;
@@ -128,5 +135,23 @@
     });
   };
 
+  function openQuestionOrder() {
+    $('rhQuestionOrder')?.remove();
+    const questions = filteredQuestions().slice();
+    if (questions.length < 2) { toast('Add at least two questions to change their order.'); return; }
+    const dialog = document.createElement('div'); dialog.id = 'rhQuestionOrder';
+    dialog.innerHTML = '<section class="rh-order-card" role="dialog" aria-modal="true"><h2>Reorder questions</h2><p>Drag questions up or down, then save the new order.</p><div id="rhQuestionOrderList"></div><div class="rh-actions"><button type="button" class="secondary" id="rhOrderCancel">Cancel</button><button type="button" id="rhOrderSave">Save order</button></div></section>';
+    document.body.appendChild(dialog); const list = $('rhQuestionOrderList'); let dragged = null;
+    function draw() { list.replaceChildren(); questions.forEach((q,i) => { const row=document.createElement('div'); row.className='rh-order-row'; row.draggable=true; const grip=document.createElement('b'); grip.textContent='⠿'; const num=document.createElement('span'); num.textContent=(i+1)+'.'; const title=document.createElement('span'); title.textContent=q.text||'Untitled question'; row.append(grip,num,title); row.addEventListener('dragstart',e=>{dragged=q.id;row.classList.add('dragging');e.dataTransfer.effectAllowed='move';}); row.addEventListener('dragend',()=>{dragged=null;row.classList.remove('dragging');}); row.addEventListener('dragover',e=>e.preventDefault()); row.addEventListener('drop',e=>{e.preventDefault();const from=questions.findIndex(x=>x.id===dragged),to=questions.indexOf(q);if(from<0||to<0||from===to)return;const moved=questions.splice(from,1)[0];questions.splice(to,0,moved);draw();}); list.append(row); }); }
+    draw(); $('rhOrderCancel').onclick=()=>dialog.remove();
+    $('rhOrderSave').onclick=()=>{const ids=new Set(questions.map(q=>q.id));let i=0;data.questions=data.questions.map(q=>ids.has(q.id)?questions[i++]:q);save();practiceIndex=0;renderPractice();dialog.remove();toast('Question order saved.');};
+  }
+  function ensureOrderButton() { if ($('rhReorderQuestionsButton')) return; const b=document.createElement('button'); b.id='rhReorderQuestionsButton'; b.className='secondary'; b.textContent='↕ Reorder questions'; $('practiceCard').insertAdjacentElement('afterend',b); b.onclick=openQuestionOrder; }
+  const priorRenderPractice = renderPractice;
+  renderPractice = function() { priorRenderPractice(); ensureOrderButton(); const q=filteredQuestions()[practiceIndex],card=$('practiceCard'); if(!q||!card)return; let holder=$('rhPracticeImages'); if(!holder){holder=document.createElement('div');holder.id='rhPracticeImages';card.querySelector('.question')?.insertAdjacentElement('afterend',holder);} holder.replaceChildren();
+    function showImage(id,target,alt){if(!id)return;assetGet(id).then(blob=>{if(!blob||!target.isConnected)return;const img=document.createElement('img');img.alt=alt;img.src=URL.createObjectURL(blob);target.append(img);});}
+    showImage(q.questionImageId,holder,'Question illustration');
+    card.querySelectorAll('[name="practiceChoice"]').forEach((input,index)=>{const id=q.optionImageIds&&q.optionImageIds[index];if(!id)return;const wrap=input.parentElement;let box=wrap.querySelector('.rh-option-image');if(!box){box=document.createElement('div');box.className='rh-option-image';wrap.append(box);}showImage(id,box,'Option illustration');});
+  };
   try { renderPractice(); } catch (_) { /* app data may still be initializing */ }
 })();

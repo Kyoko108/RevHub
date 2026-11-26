@@ -239,7 +239,7 @@
           if (!optionFile) { optionImageIds.push(null); continue; }
           const imageId = crypto.randomUUID(); await assetPut(imageId, optionFile); optionImageIds.push(imageId);
         }
-        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: true, sourceName: file.name, fullSolutionImage: true, questionImageId, optionImageIds, duplicateOf: duplicate?.id || null });
+        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: true, sourceName: file.name, fullSolutionImage: true, sourceScreenshotId: id, questionImageId, optionImageIds, duplicateOf: duplicate?.id || null });
         saved++; save();
       }
       renderLibrary();

@@ -36,6 +36,9 @@
     .rh-modal-card button.secondary { color:#111827; background:rgba(255,255,255,.84); border:1px solid rgba(17,24,39,.2); }
     #sqSourcePreview { display:block; width:100%; height:auto; max-height:42dvh; object-fit:contain; object-position:top center; border:1px solid rgba(31,41,55,.2); border-radius:12px; background:#e5e7eb; }
     #sqAnswerChoices { margin-top:6px; }
+    .rh-image-attach,.rh-option-image-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0; }
+    .rh-option-image-row { padding:8px; border:1px solid rgba(31,41,55,.12); border-radius:10px; background:rgba(255,255,255,.5); }
+    .rh-image-attach button,.rh-option-image-row button { padding:8px 11px; font-size:.85rem; }
     @media(prefers-reduced-motion:reduce) { .rh-modal-card::before { animation:none; } }
   `;
   document.head.appendChild(style);
@@ -154,7 +157,7 @@
     return new Promise(resolve => {
       $('screenshotQuizDialog')?.remove();
       const dialog = document.createElement('div'); dialog.id = 'screenshotQuizDialog'; dialog.className = 'rh-modal';
-      dialog.innerHTML = `<section class="rh-modal-card" role="dialog" aria-modal="true" aria-labelledby="sqTitle"><h2 id="sqTitle">Review screenshot question</h2><p class="rh-hint" id="sqFileHint"></p><p class="rh-hint">Review OCR and fill the question, answer choices, correct option, and solution. The complete original screenshot is kept, so solution diagrams are not cropped or discarded.</p><details><summary>View full original screenshot (including solution/diagram)</summary><img id="sqSourcePreview" alt="Full selected screenshot, including the solution region"></details><label for="sqQuestion">Question<textarea id="sqQuestion" rows="4" placeholder="Paste or edit the question"></textarea></label><label for="sqOptions">Answer choices <span class="rh-hint">(paste one option per line)</span><textarea id="sqOptions" rows="5" placeholder="A. First option&#10;B. Second option"></textarea></label><label for="sqCorrectOption">Correct option <span class="rh-hint">(paste the exact correct option or answer)</span><input id="sqCorrectOption" type="text" placeholder="Paste the correct option"></label><div id="sqAnswerChoices"></div><p id="sqAnswerHint" class="rh-hint"></p><label for="sqSolution">Solution <span class="rh-hint">(OCR text after “Solution”; edit or paste as needed)</span><textarea id="sqSolution" rows="6" placeholder="Paste or edit the solution text. The original screenshot is retained in full for any diagram."></textarea></label><div class="rh-actions"><button type="button" class="secondary" id="sqCancel">Cancel screenshot</button><button type="button" id="sqSave">Save quiz question</button></div></section>`;
+      dialog.innerHTML = `<section class="rh-modal-card" role="dialog" aria-modal="true" aria-labelledby="sqTitle"><h2 id="sqTitle">Review screenshot question</h2><p class="rh-hint" id="sqFileHint"></p><p class="rh-hint">Review OCR and fill the question, answer choices, correct option, and solution. The complete original screenshot is kept, so solution diagrams are not cropped or discarded.</p><details><summary>View full original screenshot (including solution/diagram)</summary><img id="sqSourcePreview" alt="Full selected screenshot, including the solution region"></details><label for="sqQuestion">Question<textarea id="sqQuestion" rows="4" placeholder="Paste or edit the question"></textarea></label><div class="rh-image-attach"><button type="button" class="secondary" id="sqQuestionImageButton">＋ Attach question image</button><span id="sqQuestionImageName" class="rh-hint">No separate image attached</span><input id="sqQuestionImageFile" type="file" accept="image/*" hidden></div><label for="sqOptions">Answer choices <span class="rh-hint">(paste one option per line)</span><textarea id="sqOptions" rows="5" placeholder="A. First option&#10;B. Second option"></textarea></label><div id="sqOptionImages"></div><label for="sqCorrectOption">Correct option <span class="rh-hint">(paste the exact correct option or answer)</span><input id="sqCorrectOption" type="text" placeholder="Paste the correct option"></label><div id="sqAnswerChoices"></div><p id="sqAnswerHint" class="rh-hint"></p><label for="sqSolution">Solution <span class="rh-hint">(OCR text after “Solution”; edit or paste as needed)</span><textarea id="sqSolution" rows="6" placeholder="Paste or edit the solution text. The original screenshot is retained in full for any diagram."></textarea></label><div class="rh-actions"><button type="button" class="secondary" id="sqCancel">Cancel screenshot</button><button type="button" id="sqSave">Save quiz question</button></div></section>`;
       document.body.appendChild(dialog);
       $('sqFileHint').textContent = `${file.name} · OCR can misread text; check each field against the screenshot.`;
       const previewUrl = URL.createObjectURL(file);
@@ -168,6 +171,17 @@
         if (exactAnswer) return options.findIndex(option => option.replace(/^[A-D1-4][).:\-]\s*/i, '').toLowerCase() === exactAnswer.replace(/^[A-D1-4][).:\-]\s*/i, '').toLowerCase() || option.toLowerCase() === exactAnswer);
         return parsed.answerIndex;
       };
+      let questionImageFile = null, optionImageFiles = [];
+      $('sqQuestionImageButton').onclick = () => $('sqQuestionImageFile').click();
+      $('sqQuestionImageFile').onchange = () => { questionImageFile = $('sqQuestionImageFile').files[0] || null; $('sqQuestionImageName').textContent = questionImageFile ? questionImageFile.name : 'No separate image attached'; };
+      function renderOptionImageControls() {
+        const choices = $('sqOptions').value.split(String.fromCharCode(10)).map(x => x.trim()).filter(Boolean);
+        optionImageFiles = choices.map((x,i) => optionImageFiles[i] || null);
+        $('sqOptionImages').innerHTML = '<p class="rh-hint">Attach an image to an individual option (optional)</p>' + choices.map((choice,i) => '<div class="rh-option-image-row"><span>' + escapeHtml(choice.slice(0,42)) + '</span><button type="button" class="secondary" data-img-option="' + i + '">' + (optionImageFiles[i] ? 'Change image' : '＋ Attach image') + '</button><span class="rh-hint">' + (optionImageFiles[i] ? escapeHtml(optionImageFiles[i].name) : '') + '</span><input type="file" accept="image/*" data-img-file="' + i + '" hidden></div>').join('');
+        $('sqOptionImages').querySelectorAll('[data-img-option]').forEach(button => { const i=Number(button.dataset.imgOption), input=$('sqOptionImages').querySelector('[data-img-file="'+i+'"]'); button.onclick=()=>input.click(); input.onchange=()=>{optionImageFiles[i]=input.files[0]||null;renderOptionImageControls();}; });
+      }
+      renderOptionImageControls();
+      $('sqOptions').addEventListener('input', renderOptionImageControls);
       const refreshAnswers = () => {
         const choices = $('sqOptions').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const prior = dialog.querySelector('input[name="sqAnswer"]:checked');
@@ -191,7 +205,7 @@
         if (answerIndex < 0 && typedAnswer) answerIndex = options.findIndex(option => option.toLowerCase() === typedAnswer.toLowerCase() || option.replace(/^[A-D1-4][).:\-]\s*/i, '').toLowerCase() === typedAnswer.replace(/^[A-D1-4][).:\-]\s*/i, '').toLowerCase());
         if (!question || options.length < 2) { toast('Enter a question and at least two answer choices.'); return; }
         if (answerIndex < 0 || answerIndex >= options.length) { toast('Select the correct choice or enter a Correct option that matches one of the choices.'); $('sqCorrectOption').focus(); return; }
-        finish({ question, options, answerIndex, solution: $('sqSolution').value.trim() });
+        finish({ question, options, answerIndex, solution: $('sqSolution').value.trim(), questionImageFile, optionImageFiles: options.map((x,i) => optionImageFiles[i] || null) });
       };
       $('sqQuestion').focus();
     });
@@ -218,7 +232,14 @@
         // Save the unmodified complete screenshot. It includes all content below
         // the Solution heading, including any diagram, without cropping.
         await assetPut(id, file);
-        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: true, sourceName: file.name, fullSolutionImage: true, duplicateOf: duplicate?.id || null });
+        let questionImageId = null;
+        if (reviewed.questionImageFile) { questionImageId = crypto.randomUUID(); await assetPut(questionImageId, reviewed.questionImageFile); }
+        const optionImageIds = [];
+        for (const optionFile of (reviewed.optionImageFiles || [])) {
+          if (!optionFile) { optionImageIds.push(null); continue; }
+          const imageId = crypto.randomUUID(); await assetPut(imageId, optionFile); optionImageIds.push(imageId);
+        }
+        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: true, sourceName: file.name, fullSolutionImage: true, questionImageId, optionImageIds, duplicateOf: duplicate?.id || null });
         saved++; save();
       }
       renderLibrary();

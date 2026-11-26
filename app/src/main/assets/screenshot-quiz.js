@@ -172,6 +172,33 @@
         return parsed.answerIndex;
       };
       let questionImageFile = null, optionImageFiles = [];
+      const cropSourceUrl = previewUrl;
+      function openDiagramCrop(onCropped) {
+        const layer=document.createElement('div');layer.className='rh-modal';layer.style.zIndex='10005';
+        layer.innerHTML='<section class="rh-modal-card" style="width:min(760px,100%)"><h3>Crop diagram from screenshot</h3><p class="rh-hint">Drag around only the diagram or figure, then choose Use crop.</p><canvas id="rhCropCanvas" style="display:block;width:100%;max-height:55dvh;touch-action:none;border:1px solid #9ca3af;border-radius:10px;background:#fff"></canvas><div class="rh-actions"><button type="button" class="secondary" id="rhCropCancel">Cancel</button><button type="button" id="rhCropApply">Use crop</button></div></section>';
+        document.body.append(layer);
+        const canvas=layer.querySelector('#rhCropCanvas'),ctx=canvas.getContext('2d'),img=new Image();let start=null,rect=null;
+        img.onload=()=>{const scale=Math.min(1,1100/img.naturalWidth);canvas.width=Math.round(img.naturalWidth*scale);canvas.height=Math.round(img.naturalHeight*scale);ctx.drawImage(img,0,0,canvas.width,canvas.height);};
+        img.src=cropSourceUrl;
+        const pos=ev=>{const b=canvas.getBoundingClientRect();return{x:(ev.clientX-b.left)*canvas.width/b.width,y:(ev.clientY-b.top)*canvas.height/b.height};};
+        canvas.onpointerdown=ev=>{start=pos(ev);rect=null;canvas.setPointerCapture(ev.pointerId);};
+        canvas.onpointermove=ev=>{if(!start)return;const p=pos(ev);rect={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(start.x-p.x),h:Math.abs(start.y-p.y)};ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.strokeStyle='#f97316';ctx.lineWidth=3;ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);};
+        canvas.onpointerup=()=>{start=null;};
+        layer.querySelector('#rhCropCancel').onclick=()=>layer.remove();
+        layer.querySelector('#rhCropApply').onclick=()=>{if(!rect||rect.w<8||rect.h<8){toast('Drag around a diagram first.');return;}const ratio=img.naturalWidth/canvas.width,out=document.createElement('canvas');out.width=Math.round(rect.w*ratio);out.height=Math.round(rect.h*ratio);out.getContext('2d').drawImage(img,Math.round(rect.x*ratio),Math.round(rect.y*ratio),out.width,out.height,0,0,out.width,out.height);out.toBlob(blob=>{if(blob){onCropped(new File([blob],'cropped-diagram.png',{type:'image/png'}));layer.remove();}},'image/png');};
+      }
+      $('sqQuestionImageButton').textContent='＋ Crop question diagram';
+      $('sqQuestionImageButton').onclick=()=>openDiagramCrop(cropped=>{questionImageFile=cropped;$('sqQuestionImageName').textContent='Cropped diagram ready';});
+      $('sqQuestionImageFile').onchange=()=>{questionImageFile=$('sqQuestionImageFile').files[0]||null;$('sqQuestionImageName').textContent=questionImageFile?.name||'No image attached';};
+      function renderOptionImageControls(){
+        const choices=$('sqOptions').value.split(String.fromCharCode(10)).map(x=>x.trim()).filter(Boolean);
+        optionImageFiles=choices.map((x,i)=>optionImageFiles[i]||null);
+        $('sqOptionImages').innerHTML='<p class="rh-hint">Crop a diagram only for options that contain one</p>'+choices.map((choice,i)=>'<div class="rh-option-image-row"><span>'+escapeHtml(choice.slice(0,42))+'</span><button type="button" class="secondary" data-crop-option="'+i+'">'+(optionImageFiles[i]?'Recrop diagram':'＋ Crop option diagram')+'</button><span class="rh-hint">'+(optionImageFiles[i]?'Diagram cropped':'')+'</span></div>').join('');
+        $('sqOptionImages').querySelectorAll('[data-crop-option]').forEach(button=>{const i=Number(button.dataset.cropOption);button.onclick=()=>openDiagramCrop(cropped=>{optionImageFiles[i]=cropped;renderOptionImageControls();});});
+      }
+      renderOptionImageControls();
+      $('sqOptions').addEventListener('input',renderOptionImageControls);
+
       const refreshAnswers = () => {
         const choices = $('sqOptions').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const prior = dialog.querySelector('input[name="sqAnswer"]:checked');

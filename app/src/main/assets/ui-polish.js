@@ -41,13 +41,13 @@
     }
     .logo,
     .hero,
-    button:not(.secondary):not(.ghost):not(.danger) {
-      background-image: linear-gradient(135deg,#e74689 0%,#b14db5 48%,#7654d8 100%);
+    button:not(.secondary):not(.ghost):not(.danger):not(.nav button) {
+      background-image: linear-gradient(135deg,#e64a7d 0%,#ae50a8 50%,#7557d2 100%);
       background-size: 220% 220%;
       animation: revhub-pink-purple-flow 9s ease-in-out infinite;
     }
     @media (prefers-reduced-motion: reduce) {
-      .logo, .hero, button:not(.secondary):not(.ghost):not(.danger) {
+      .logo, .hero, button:not(.secondary):not(.ghost):not(.danger):not(.nav button) {
         animation: none;
         background-position: 50% 50%;
       }

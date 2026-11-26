@@ -22,9 +22,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(true)
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) window.setDecorFitsSystemWindows(true)
         window.statusBarColor = android.graphics.Color.rgb(13, 17, 27)
         window.navigationBarColor = android.graphics.Color.rgb(13, 17, 27)
 
@@ -42,7 +40,6 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = true
             setSupportMultipleWindows(false)
-            // Preserve pinch zoom and native WebView touch scrolling together.
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
@@ -84,11 +81,14 @@ class MainActivity : Activity() {
         val enhancements = assets.open("enhancements.js").bufferedReader().use { it.readText() }
         val screenshotQuiz = assets.open("screenshot-quiz.js").bufferedReader().use { it.readText() }
         val studyFeedback = assets.open("study-feedback.js").bufferedReader().use { it.readText() }
+        val questionEditor = assets.open("question-editor.js").bufferedReader().use { it.readText() }
         val screenLayout = assets.open("screen-layout.js").bufferedReader().use { it.readText() }
         view.evaluateJavascript(enhancements) {
             view.evaluateJavascript(screenshotQuiz) {
                 view.evaluateJavascript(studyFeedback) {
-                    view.evaluateJavascript(screenLayout, null)
+                    view.evaluateJavascript(questionEditor) {
+                        view.evaluateJavascript(screenLayout, null)
+                    }
                 }
             }
         }

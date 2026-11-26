@@ -43,8 +43,7 @@
     if (!reel) { toast('Open a revision concept first, then mark its status.'); return; }
     reel.revised = revised;
     reel.revisedAt = new Date().toISOString();
-    save();
-    window.revHubFeedback(revised);
+    save(); window.revHubFeedback(revised);
     toast(revised ? 'Concept marked revised.' : 'Concept saved to your not-revised review list.');
     renderLibrary();
   }
@@ -55,10 +54,8 @@
     done.addEventListener('click', () => recordConceptStatus(true));
     let notDone = $('conceptNotDone');
     if (!notDone) {
-      notDone = document.createElement('button');
-      notDone.id = 'conceptNotDone'; notDone.className = 'secondary';
-      notDone.textContent = '✕ This concept has not been revised';
-      done.insertAdjacentElement('afterend', notDone);
+      notDone = document.createElement('button'); notDone.id = 'conceptNotDone'; notDone.className = 'secondary';
+      notDone.textContent = '✕ This concept has not been revised'; done.insertAdjacentElement('afterend', notDone);
     }
     notDone.addEventListener('click', () => recordConceptStatus(false));
   }
@@ -68,62 +65,30 @@
     if (!Array.isArray(data.flashcards)) data.flashcards = [];
     const key = attempt.id || `${attempt.questionId || ''}|${attempt.at || ''}|${attempt.given || ''}`;
     if (data.flashcards.some(card => card.attemptKey === key)) return false;
-    data.flashcards.unshift({
-      id: `fc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      attemptKey: key,
-      questionId: attempt.questionId || '',
-      subject: attempt.subject || (data.questions || []).find(question => question.id === attempt.questionId)?.subject || 'General',
-      question: attempt.text || 'Question unavailable',
-      missedAnswer: attempt.given || '(no answer recorded)',
-      correctAnswer: attempt.answer || '(correct answer unavailable)',
-      createdAt: attempt.at || new Date().toISOString(),
-      reviewed: false
-    });
+    data.flashcards.unshift({ id: `fc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, attemptKey: key, questionId: attempt.questionId || '', subject: attempt.subject || (data.questions || []).find(question => question.id === attempt.questionId)?.subject || 'General', question: attempt.text || 'Question unavailable', missedAnswer: attempt.given || '(no answer recorded)', correctAnswer: attempt.answer || '(correct answer unavailable)', createdAt: attempt.at || new Date().toISOString(), reviewed: false });
     return true;
   }
-
-  // Backfill older wrong attempts once so existing users also get cards.
   if (!Array.isArray(data.flashcards)) data.flashcards = [];
   (data.attempts || []).filter(attempt => attempt.result === 'wrong').forEach(makeFlashcard);
 
   function openItem(item, type) {
-    if (type === 'reel') {
-      $('revFilter').value = item.subject;
-      revIndex = Math.max(0, filteredReels().findIndex(reel => reel.id === item.id));
-      show('revision'); renderRevision();
-    } else {
-      $('practiceFilter').value = item.subject;
-      practiceIndex = Math.max(0, filteredQuestions().findIndex(question => question.id === item.id));
-      show('practice'); renderPractice();
-    }
+    if (type === 'reel') { $('revFilter').value = item.subject; revIndex = Math.max(0, filteredReels().findIndex(reel => reel.id === item.id)); show('revision'); renderRevision(); }
+    else { $('practiceFilter').value = item.subject; practiceIndex = Math.max(0, filteredQuestions().findIndex(question => question.id === item.id)); show('practice'); renderPractice(); }
   }
-
-  function addActionButton(parent, text, callback, className = '') {
-    const button = document.createElement('button');
-    button.className = className; button.textContent = text;
-    button.addEventListener('click', callback); parent.appendChild(button);
-    return button;
-  }
+  function addActionButton(parent, text, callback, className = '') { const button = document.createElement('button'); button.className = className; button.textContent = text; button.addEventListener('click', callback); parent.appendChild(button); return button; }
 
   function renderRegistry() {
-    const parent = $('subjectList');
-    if (!parent) return;
+    const parent = $('subjectList'); if (!parent) return;
     let registry = $('revisionRegistry');
     if (!registry) { registry = document.createElement('section'); registry.id = 'revisionRegistry'; registry.className = 'section'; parent.appendChild(registry); }
     registry.replaceChildren();
     const heading = document.createElement('h3'); heading.textContent = 'Revision registry'; registry.appendChild(heading);
-    const entries = [
-      ...(data.reels || []).map(item => ({ item, type: 'reel', title: item.name || 'Revision video' })),
-      ...(data.questions || []).map(item => ({ item, type: 'question', title: item.text || 'Untitled question' }))
-    ];
-    if (!entries.length) {
-      const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'Saved revision videos and quiz questions will appear here.'; registry.appendChild(empty); return;
-    }
+    const entries = [...(data.reels || []).map(item => ({ item, type: 'reel', title: item.name || 'Revision video' })), ...(data.questions || []).map(item => ({ item, type: 'question', title: item.text || 'Untitled question' }))];
+    if (!entries.length) { const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'Saved revision videos and quiz questions will appear here.'; registry.appendChild(empty); return; }
     entries.forEach(({ item, type, title }) => {
       const row = document.createElement('article'); row.className = 'registry-item';
       const name = document.createElement('div'); name.className = 'registry-title'; name.textContent = title;
-      const status = document.createElement('div'); status.className = 'registry-status';
-      status.textContent = `${item.subject || 'General'} · ${item.revised === true ? 'Revised' : item.revised === false ? 'Not revised · needs review' : 'Not marked'}`;
+      const status = document.createElement('div'); status.className = 'registry-status'; status.textContent = `${item.subject || 'General'} · ${item.revised === true ? 'Revised' : item.revised === false ? 'Not revised · needs review' : 'Not marked'}`;
       const actions = document.createElement('div'); actions.className = 'registry-actions';
       addActionButton(actions, type === 'reel' ? 'Open revision video' : 'Open quiz question', () => openItem(item, type));
       if (type === 'reel') {
@@ -135,14 +100,9 @@
   }
 
   function renderReviewQueue() {
-    const performance = $('performance');
-    if (!performance) return;
+    const performance = $('performance'); if (!performance) return;
     let queue = $('rhReviewQueue');
-    if (!queue) {
-      queue = document.createElement('section'); queue.id = 'rhReviewQueue'; queue.className = 'section';
-      const historySection = $('historyList')?.parentElement;
-      (historySection || performance).insertAdjacentElement('beforebegin', queue);
-    }
+    if (!queue) { queue = document.createElement('section'); queue.id = 'rhReviewQueue'; queue.className = 'section'; const historySection = $('historyList')?.parentElement; (historySection || performance).insertAdjacentElement('beforebegin', queue); }
     queue.replaceChildren();
     const title = document.createElement('h3'); title.textContent = 'Needs another review'; queue.appendChild(title);
     const wrongAttempts = (data.attempts || []).filter(attempt => attempt.result === 'wrong');
@@ -150,42 +110,27 @@
     wrongAttempts.forEach(attempt => { const key = attempt.questionId || attempt.text || `attempt-${wrongByQuestion.size}`; if (!wrongByQuestion.has(key)) wrongByQuestion.set(key, attempt); });
     const notRevised = (data.reels || []).filter(reel => reel.revised === false);
     const pending = [...[...wrongByQuestion.values()].map(item => ({ type: 'question', item })), ...notRevised.map(item => ({ type: 'reel', item }))];
-    if (!pending.length) {
-      const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'No wrong answers or concepts marked not revised. They will be listed here when recorded.'; queue.appendChild(empty); return;
-    }
+    if (!pending.length) { const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'No wrong answers or concepts marked not revised. They will be listed here when recorded.'; queue.appendChild(empty); return; }
     pending.forEach(({ type, item }) => {
       const row = document.createElement('article'); row.className = 'registry-item';
       const name = document.createElement('div'); name.className = 'registry-title'; name.textContent = type === 'question' ? item.text || 'Wrong answer' : item.name || 'Revision concept';
-      const status = document.createElement('div'); status.className = 'registry-status';
-      status.textContent = type === 'question' ? `Wrong answer · ${item.subject || 'General'} · your answer: ${item.given || '—'} · correct: ${item.answer || '—'}` : `${item.subject || 'General'} · Marked not revised${item.revisedAt ? ` · ${new Date(item.revisedAt).toLocaleString()}` : ''}`;
+      const status = document.createElement('div'); status.className = 'registry-status'; status.textContent = type === 'question' ? `Wrong answer · ${item.subject || 'General'} · your answer: ${item.given || '—'} · correct: ${item.answer || '—'}` : `${item.subject || 'General'} · Marked not revised${item.revisedAt ? ` · ${new Date(item.revisedAt).toLocaleString()}` : ''}`;
       const actions = document.createElement('div'); actions.className = 'registry-actions';
-      if (type === 'question') {
-        const question = (data.questions || []).find(candidate => candidate.id === item.questionId);
-        if (question) addActionButton(actions, 'Retry question', () => openItem(question, 'question'));
-      } else {
-        addActionButton(actions, 'Open concept', () => openItem(item, 'reel'));
-        addActionButton(actions, 'Mark revised', () => { item.revised = true; item.revisedAt = new Date().toISOString(); save(); window.revHubFeedback(true); renderLibrary(); renderReviewQueue(); }, 'secondary');
-      }
+      if (type === 'question') { const question = (data.questions || []).find(candidate => candidate.id === item.questionId); if (question) addActionButton(actions, 'Retry question', () => openItem(question, 'question')); }
+      else { addActionButton(actions, 'Open concept', () => openItem(item, 'reel')); addActionButton(actions, 'Mark revised', () => { item.revised = true; item.revisedAt = new Date().toISOString(); save(); window.revHubFeedback(true); renderLibrary(); renderReviewQueue(); }, 'secondary'); }
       row.append(name, status, actions); queue.appendChild(row);
     });
   }
 
   function renderFlashcards() {
-    const performance = $('performance');
-    if (!performance) return;
+    const performance = $('performance'); if (!performance) return;
     let section = $('rhFlashcards');
-    if (!section) {
-      section = document.createElement('section'); section.id = 'rhFlashcards'; section.className = 'section';
-      const queue = $('rhReviewQueue');
-      (queue || $('historyList')?.parentElement || performance).insertAdjacentElement('afterend', section);
-    }
+    if (!section) { section = document.createElement('section'); section.id = 'rhFlashcards'; section.className = 'section'; const queue = $('rhReviewQueue'); (queue || $('historyList')?.parentElement || performance).insertAdjacentElement('afterend', section); }
     section.replaceChildren();
     const heading = document.createElement('h3'); heading.textContent = 'Wrong-answer flashcards'; section.appendChild(heading);
     const cards = Array.isArray(data.flashcards) ? data.flashcards : [];
     const list = document.createElement('div'); list.id = 'rhFlashcardList'; section.appendChild(list);
-    if (!cards.length) {
-      const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'Flashcards are created automatically when you submit a wrong answer.'; list.appendChild(empty); return;
-    }
+    if (!cards.length) { const empty = document.createElement('p'); empty.className = 'muted small'; empty.textContent = 'Flashcards are created automatically when you submit a wrong answer.'; list.appendChild(empty); return; }
     cards.forEach(card => {
       const article = document.createElement('article'); article.className = 'rh-flashcard'; article.dataset.reviewed = String(card.reviewed === true);
       const label = document.createElement('div'); label.className = 'flashcard-label'; label.textContent = `${card.subject || 'General'} · ${card.reviewed ? 'Reviewed' : 'Tap to reveal'}`;
@@ -193,49 +138,31 @@
       const missed = document.createElement('div'); missed.className = 'flashcard-missed'; missed.textContent = `Your answer: ${card.missedAnswer}`;
       const answer = document.createElement('div'); answer.className = 'flashcard-answer'; answer.hidden = true; answer.textContent = `Correct answer: ${card.correctAnswer}`;
       const actions = document.createElement('div'); actions.className = 'flashcard-actions';
-      const reveal = document.createElement('button'); reveal.className = 'secondary'; reveal.textContent = 'Show answer';
-      reveal.addEventListener('click', () => { answer.hidden = !answer.hidden; reveal.textContent = answer.hidden ? 'Show answer' : 'Hide answer'; });
-      actions.appendChild(reveal);
-      const reviewed = document.createElement('button'); reviewed.className = 'secondary'; reviewed.textContent = card.reviewed ? 'Mark to review again' : 'Mark reviewed';
-      reviewed.addEventListener('click', () => { card.reviewed = !card.reviewed; card.reviewedAt = card.reviewed ? new Date().toISOString() : null; save(); renderFlashcards(); });
-      actions.appendChild(reviewed);
+      const reveal = document.createElement('button'); reveal.className = 'secondary'; reveal.textContent = 'Show answer'; reveal.addEventListener('click', () => { answer.hidden = !answer.hidden; reveal.textContent = answer.hidden ? 'Show answer' : 'Hide answer'; }); actions.appendChild(reveal);
+      const reviewed = document.createElement('button'); reviewed.className = 'secondary'; reviewed.textContent = card.reviewed ? 'Mark to review again' : 'Mark reviewed'; reviewed.addEventListener('click', () => { card.reviewed = !card.reviewed; card.reviewedAt = card.reviewed ? new Date().toISOString() : null; save(); renderFlashcards(); }); actions.appendChild(reviewed);
       article.append(label, question, missed, answer, actions); list.appendChild(article);
     });
   }
 
   function renderQuizTimingSummary() {
-    const performance = $('performance');
-    if (!performance) return;
+    const performance = $('performance'); if (!performance) return;
     let summary = $('quizTimingSummary');
-    if (!summary) {
-      summary = document.createElement('div'); summary.id = 'quizTimingSummary'; summary.className = 'section';
-      summary.innerHTML = '<h3>Quiz timing & mistakes</h3><p class="muted small"></p>';
-      const history = $('historyList')?.parentElement;
-      history?.insertAdjacentElement('beforebegin', summary);
-    }
+    if (!summary) { summary = document.createElement('div'); summary.id = 'quizTimingSummary'; summary.className = 'section'; summary.innerHTML = '<h3>Quiz timing & mistakes</h3><p class="muted small"></p>'; const history = $('historyList')?.parentElement; history?.insertAdjacentElement('beforebegin', summary); }
     const attempts = (data.attempts || []).filter(attempt => attempt.result === 'right' || attempt.result === 'wrong');
     const wrong = attempts.filter(attempt => attempt.result === 'wrong').length;
     const average = attempts.length ? Math.round(attempts.reduce((sum, attempt) => sum + (Number(attempt.seconds) || 0), 0) / attempts.length) : 0;
     summary.querySelector('p').textContent = attempts.length ? `${attempts.length} answered · ${wrong} wrong · average ${fmt(average)} per question. Individual times are listed in Question history.` : 'Answer quiz questions to see your total wrong answers and average time per question.';
   }
 
-  // The app's inline click handler records data.attempts before this deferred listener runs.
   const submit = $('submitQ');
   if (submit) submit.addEventListener('click', () => setTimeout(() => {
     const latest = data.attempts?.[data.attempts.length - 1];
-    if (latest?.result === 'right' || latest?.result === 'wrong') {
-      if (latest.result === 'wrong') { makeFlashcard(latest); save(); }
-      window.revHubFeedback(latest.result === 'right');
-      renderReviewQueue(); renderQuizTimingSummary(); renderFlashcards();
-    }
+    if (latest?.result === 'right' || latest?.result === 'wrong') { if (latest.result === 'wrong') { makeFlashcard(latest); save(); } window.revHubFeedback(latest.result === 'right'); renderReviewQueue(); renderQuizTimingSummary(); renderFlashcards(); }
   }, 0));
 
   const priorRenderLibrary = renderLibrary;
   renderLibrary = function () { priorRenderLibrary(); renderRegistry(); renderReviewQueue(); };
   const priorRenderPerformance = renderPerformance;
   renderPerformance = function () { priorRenderPerformance(); renderQuizTimingSummary(); renderReviewQueue(); renderFlashcards(); };
-  try {
-    if ((data.attempts || []).some(attempt => attempt.result === 'wrong')) save();
-    renderLibrary(); renderQuizTimingSummary(); renderReviewQueue(); renderFlashcards();
-  } catch (_) { /* app data may still be loading */ }
+  try { if ((data.attempts || []).some(attempt => attempt.result === 'wrong')) save(); renderLibrary(); renderQuizTimingSummary(); renderReviewQueue(); renderFlashcards(); } catch (_) { /* app data may still be loading */ }
 })();

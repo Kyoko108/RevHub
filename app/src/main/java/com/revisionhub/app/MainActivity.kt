@@ -3,13 +3,15 @@ package com.revisionhub.app
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.view.WindowManager
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
@@ -22,6 +24,18 @@ class MainActivity : Activity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
         webView = WebView(this)
+        webView.clipToPadding = true
+        // Keep the WebView's content inside status/navigation bars and display cutouts
+        // (including camera notches) on Android versions that draw edge-to-edge.
+        webView.setOnApplyWindowInsetsListener { view, insets ->
+            val cutout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) insets.displayCutout else null
+            val left = maxOf(insets.systemWindowInsetLeft, cutout?.safeInsetLeft ?: 0)
+            val top = maxOf(insets.systemWindowInsetTop, cutout?.safeInsetTop ?: 0)
+            val right = maxOf(insets.systemWindowInsetRight, cutout?.safeInsetRight ?: 0)
+            val bottom = maxOf(insets.systemWindowInsetBottom, cutout?.safeInsetBottom ?: 0)
+            view.setPadding(left, top, right, bottom)
+            insets.consumeSystemWindowInsets()
+        }
         setContentView(webView)
         webView.settings.apply {
             javaScriptEnabled = true
@@ -53,10 +67,6 @@ class MainActivity : Activity() {
             ): Boolean {
                 this@MainActivity.filePathCallback?.onReceiveValue(null)
                 this@MainActivity.filePathCallback = filePathCallback
-
-                // Preserve the HTML input's image/* filter and multiple-selection mode.
-                // Android's system picker grants access only to items the user selects;
-                // the app does not request broad photo or storage permissions.
                 val intent = fileChooserParams.createIntent()
                 return try {
                     startActivityForResult(intent, filePickerRequest)
@@ -75,9 +85,12 @@ class MainActivity : Activity() {
         val enhancements = assets.open("enhancements.js").bufferedReader().use { it.readText() }
         val screenshotQuiz = assets.open("screenshot-quiz.js").bufferedReader().use { it.readText() }
         val studyFeedback = assets.open("study-feedback.js").bufferedReader().use { it.readText() }
+        val screenLayout = assets.open("screen-layout.js").bufferedReader().use { it.readText() }
         view.evaluateJavascript(enhancements) {
             view.evaluateJavascript(screenshotQuiz) {
-                view.evaluateJavascript(studyFeedback, null)
+                view.evaluateJavascript(studyFeedback) {
+                    view.evaluateJavascript(screenLayout, null)
+                }
             }
         }
     }

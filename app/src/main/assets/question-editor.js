@@ -7,6 +7,7 @@
 
   const style = document.createElement('style');
   style.textContent = `
+    .rh-modal { position:fixed; inset:0; z-index:10006; display:grid; place-items:center; overflow-y:auto; padding:16px; background:rgba(5,9,18,.82); backdrop-filter:blur(8px); }
     #rhQuestionEditor { position:fixed; inset:0; z-index:10002; display:grid; place-items:center; overflow-y:auto; padding:16px; background:rgba(5,9,18,.78); backdrop-filter:blur(8px); }
     #rhQuestionEditor .rh-editor-card { position:relative; isolation:isolate; width:min(620px,100%); max-height:calc(100dvh - 32px); overflow-y:auto; padding:22px; border:1px solid rgba(255,255,255,.62); border-radius:20px; background:rgba(248,250,255,.96); color:#111827; box-shadow:0 24px 80px rgba(0,0,0,.38); }
     #rhQuestionEditor .rh-editor-card::before { content:''; position:absolute; z-index:-1; inset:-45%; pointer-events:none; background:conic-gradient(from 0deg,rgba(59,130,246,.23),rgba(168,85,247,.18),rgba(236,72,153,.22),rgba(96,165,250,.2),rgba(59,130,246,.23)); filter:blur(42px); animation:rh-editor-gradient-flow 14s linear infinite; }
@@ -33,6 +34,7 @@
     #rhQuestionOrderList .dragging { opacity:.4; }
     #rhQuestionOrder .rh-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
     #rhPracticeImages img,.rh-option-image img { display:block; max-width:100%; max-height:260px; object-fit:contain; margin:8px auto; border-radius:10px; }
+    #practiceCard [data-choice] .rh-option-image img{max-height:150px}
     #rhSolutionReveal { display:none; margin-top:12px; padding:14px; border-left:4px solid #22c55e; border-radius:10px; background:rgba(34,197,94,.10); color:var(--text,#f3f5fa); white-space:pre-wrap; overflow-wrap:anywhere; max-height:min(65vh,680px); overflow:auto; line-height:1.55; }
     @media(prefers-reduced-motion:reduce) { #rhQuestionEditor .rh-editor-card::before { animation:none; } }
   `;
@@ -166,7 +168,7 @@
   renderPractice = function() { priorRenderPractice(); ensureOrderButton(); const q=filteredQuestions()[practiceIndex],card=$('practiceCard'); if(!q||!card)return; let holder=$('rhPracticeImages'); if(!holder){holder=document.createElement('div');holder.id='rhPracticeImages';card.querySelector('.question')?.insertAdjacentElement('afterend',holder);} holder.replaceChildren();
     function showImage(id,target,alt){if(!id)return;assetGet(id).then(blob=>{if(!blob||!target.isConnected)return;const img=document.createElement('img');img.alt=alt;img.src=URL.createObjectURL(blob);target.append(img);});}
     showImage(q.questionImageId,holder,'Cropped question diagram');
-    card.querySelectorAll('[name="practiceChoice"]').forEach((input,index)=>{const id=q.optionImageIds&&q.optionImageIds[index];if(!id)return;const wrap=input.parentElement;let box=wrap.querySelector('.rh-option-image');if(!box){box=document.createElement('div');box.className='rh-option-image';wrap.append(box);}showImage(id,box,'Cropped diagram for this option');});
+    card.querySelectorAll('[data-choice]').forEach((input,index)=>{const id=q.optionImageIds&&q.optionImageIds[index];if(!id)return;const wrap=input.parentElement;let box=wrap.querySelector('.rh-option-image');if(!box){box=document.createElement('div');box.className='rh-option-image';wrap.append(box);}showImage(id,box,'Cropped diagram for this option');});
   };
   try { renderPractice(); } catch (_) { /* app data may still be initializing */ }
 })();

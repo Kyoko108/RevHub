@@ -20,7 +20,9 @@
       min-height: 100dvh;
       height: auto !important;
       overflow: visible !important;
-      padding-top: max(18px, env(safe-area-inset-top, 0px));
+      /* Android lays out the WebView inside system safe bounds. Do not add a
+         second status-bar inset here or content gets pushed down unnecessarily. */
+      padding-top: 12px;
       padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
     }
     .page {
@@ -54,7 +56,6 @@
   `;
   document.head.appendChild(style);
 
-  // Keep the active page's scroll position useful when switching app sections.
   document.querySelectorAll('[data-go]').forEach(button => {
     button.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   });

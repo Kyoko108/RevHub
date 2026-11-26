@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -22,20 +21,15 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Keep the app's window below system bars rather than drawing content
+            // underneath the status bar, camera cutout, or gesture/navigation bar.
+            window.setDecorFitsSystemWindows(true)
+        }
+        window.statusBarColor = android.graphics.Color.rgb(13, 17, 27)
+        window.navigationBarColor = android.graphics.Color.rgb(13, 17, 27)
 
         webView = WebView(this)
-        webView.clipToPadding = true
-        // Keep the WebView's content inside status/navigation bars and display cutouts
-        // (including camera notches) on Android versions that draw edge-to-edge.
-        webView.setOnApplyWindowInsetsListener { view, insets ->
-            val cutout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) insets.displayCutout else null
-            val left = maxOf(insets.systemWindowInsetLeft, cutout?.safeInsetLeft ?: 0)
-            val top = maxOf(insets.systemWindowInsetTop, cutout?.safeInsetTop ?: 0)
-            val right = maxOf(insets.systemWindowInsetRight, cutout?.safeInsetRight ?: 0)
-            val bottom = maxOf(insets.systemWindowInsetBottom, cutout?.safeInsetBottom ?: 0)
-            view.setPadding(left, top, right, bottom)
-            insets.consumeSystemWindowInsets()
-        }
         setContentView(webView)
         webView.settings.apply {
             javaScriptEnabled = true

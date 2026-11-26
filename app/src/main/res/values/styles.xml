@@ -6,5 +6,8 @@
         <item name="android:statusBarColor">#0D111B</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <!-- Android 15 enforces edge-to-edge for targetSdk 35; opt out so the WebView
+             is laid out in the safe area and never beneath the camera/status bar. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>

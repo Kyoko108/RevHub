@@ -246,9 +246,7 @@
         const duplicate = data.questions.find(question => similarity(question.text, reviewed.question) >= 0.86);
         if (duplicate && mode() === 'auto') { toast(`Duplicate skipped: this may match a question in ${duplicate.subject}.`); continue; }
         const id = crypto.randomUUID();
-        // Save the unmodified complete screenshot. It includes all content below
-        // the Solution heading, including any diagram, without cropping.
-        await assetPut(id, file);
+        // Save only the diagram crops selected in the review screen.
         let questionImageId = null;
         if (reviewed.questionImageFile) { questionImageId = crypto.randomUUID(); await assetPut(questionImageId, reviewed.questionImageFile); }
         const optionImageIds = [];
@@ -256,7 +254,7 @@
           if (!optionFile) { optionImageIds.push(null); continue; }
           const imageId = crypto.randomUUID(); await assetPut(imageId, optionFile); optionImageIds.push(imageId);
         }
-        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: true, sourceName: file.name, fullSolutionImage: true, sourceScreenshotId: id, questionImageId, optionImageIds, duplicateOf: duplicate?.id || null });
+        data.questions.push({ id, subject, text: reviewed.question, answer: reviewed.options[reviewed.answerIndex], options: reviewed.options, solution: reviewed.solution, image: Boolean(questionImageId || optionImageIds.some(Boolean)), sourceName: file.name, questionImageId, optionImageIds, duplicateOf: duplicate?.id || null });
         saved++; save();
       }
       renderLibrary();

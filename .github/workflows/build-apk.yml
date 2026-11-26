@@ -1,4 +1,3 @@
-```yaml name=.github/workflows/build-apk.yml url=https://github.com/Kyoko108/RevHub/blob/d32189b560103c4cbe9ddb5527f33bce20a461cf/.github/workflows/build-apk.yml
 name: Build RevHub APK
 
 on:

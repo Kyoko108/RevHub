@@ -19,7 +19,7 @@
   const style = document.createElement('style');
   style.textContent = `
     .rh-modal { position:fixed; inset:0; z-index:10001; display:grid; place-items:center; overflow-y:auto; padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px)); background:rgba(5,9,18,.78); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-    .rh-modal-card { position:relative; isolation:isolate; overflow:hidden; width:min(620px,100%); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; padding:clamp(18px,5vw,26px); border:1px solid rgba(255,255,255,.62); border-radius:22px; background:rgba(248,250,255,.96); color:#111827; box-shadow:0 24px 80px rgba(0,0,0,.4); }
+    .rh-modal-card { position:relative; isolation:isolate; overflow:hidden; width:min(620px,100%); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; padding:clamp(18px,5vw,26px); border:1px solid rgba(255,255,255,.62); border-radius:22px; background:linear-gradient(125deg,#f4e2f4 0%,#d8eff0 56%,#cbd8ff 100%); color:#111827; box-shadow:0 24px 80px rgba(0,0,0,.4); }
     .rh-modal-card::before { content:''; position:absolute; z-index:-1; inset:-45%; pointer-events:none; background:conic-gradient(from 0deg,rgba(45,212,191,.20),rgba(99,102,241,.16),rgba(236,72,153,.12),rgba(250,204,21,.18),rgba(45,212,191,.20)); filter:blur(44px); animation:rh-modal-flow 16s linear infinite; }
     @keyframes rh-modal-flow { to { transform:rotate(360deg); } }
     .rh-modal-card h2 { margin:0 0 8px; color:#111827; font-size:1.45rem; }
@@ -31,6 +31,8 @@
     .rh-modal-card .rh-choice { display:flex; gap:10px; align-items:flex-start; margin:7px 0; padding:10px; border:1px solid rgba(31,41,55,.12); border-radius:12px; background:rgba(255,255,255,.66); color:#111827; }
     .rh-modal-card .rh-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:9px; margin-top:18px; }
     .rh-modal-card button { color:#fff; }
+    #rhSubjectContinue { background:#f97316; color:#fff; box-shadow:0 5px 14px rgba(249,115,22,.22); }
+    #rhSubjectContinue:active { background:#ea580c; }
     .rh-modal-card button.secondary { color:#111827; background:rgba(255,255,255,.84); border:1px solid rgba(17,24,39,.2); }
     #sqSourcePreview { display:block; width:100%; height:auto; max-height:42dvh; object-fit:contain; object-position:top center; border:1px solid rgba(31,41,55,.2); border-radius:12px; background:#e5e7eb; }
     #sqAnswerChoices { margin-top:6px; }

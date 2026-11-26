@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -22,14 +23,16 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Keep the app's window below system bars rather than drawing content
-            // underneath the status bar, camera cutout, or gesture/navigation bar.
             window.setDecorFitsSystemWindows(true)
         }
         window.statusBarColor = android.graphics.Color.rgb(13, 17, 27)
         window.navigationBarColor = android.graphics.Color.rgb(13, 17, 27)
 
-        webView = WebView(this)
+        webView = WebView(this).apply {
+            isVerticalScrollBarEnabled = true
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
         setContentView(webView)
         webView.settings.apply {
             javaScriptEnabled = true
@@ -39,6 +42,10 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = true
             setSupportMultipleWindows(false)
+            // Preserve pinch zoom and native WebView touch scrolling together.
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -48,9 +55,7 @@ class MainActivity : Activity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
-                if (url == "file:///android_asset/index.html") {
-                    injectEnhancements(view)
-                }
+                if (url == "file:///android_asset/index.html") injectEnhancements(view)
             }
         }
         webView.webChromeClient = object : WebChromeClient() {

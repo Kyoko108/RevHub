@@ -10,9 +10,10 @@
       min-height: 100%;
       height: auto !important;
       overflow-x: hidden !important;
-      overflow-y: auto !important;
-      overscroll-behavior-y: contain;
+      overflow-y: scroll !important;
+      overscroll-behavior-y: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y pinch-zoom;
     }
     body { margin: 0; }
     .app {
@@ -20,8 +21,7 @@
       min-height: 100dvh;
       height: auto !important;
       overflow: visible !important;
-      /* Android lays out the WebView inside system safe bounds. Do not add a
-         second status-bar inset here or content gets pushed down unnecessarily. */
+      touch-action: pan-y pinch-zoom;
       padding-top: 12px;
       padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
     }
@@ -30,12 +30,14 @@
       height: auto !important;
       max-height: none !important;
       overflow: visible !important;
+      touch-action: pan-y pinch-zoom;
       scroll-margin-top: 16px;
     }
     .nav {
       position: fixed;
       bottom: 0;
       padding-bottom: max(9px, env(safe-area-inset-bottom, 0px));
+      touch-action: manipulation;
     }
     #practiceCard, #subjectList, #historyList, #revisionRegistry {
       max-height: none;
@@ -56,6 +58,8 @@
   `;
   document.head.appendChild(style);
 
+  // Do not suppress native touch gestures: vertical swipes scroll the page and
+  // two-finger pinch remains available through the WebView zoom controls.
   document.querySelectorAll('[data-go]').forEach(button => {
     button.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   });

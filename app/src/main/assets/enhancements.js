@@ -21,8 +21,6 @@
     #studyGate .row { justify-content:center; }
     #studyGate button { margin:5px; }
     #conceptDone { margin-top:12px; width:100%; }
-    .logo { font-size:0 !important; position:relative; }
-    .logo::after { content:'R'; font-size:22px; font-weight:900; color:#10131d; }
   `;
   document.head.appendChild(style);
 
@@ -60,7 +58,6 @@
     originalShow(page);
   };
 
-  const originalCanUse = canUse;
   canUse = function () {
     if (!timeAllowed()) {
       toast('RevHub is available between 6 AM and 4 PM.');
@@ -76,18 +73,24 @@
       if (stats.length > 1) {
         const value = stats[1].querySelector('b');
         const label = stats[1].querySelector('span');
-        if (value) value.textContent = String(data.daily.sessions || 0);
-        if (label) label.textContent = 'NO. OF 90 MINUTE SESSIONS';
+        const sessions = String(data.daily.sessions || 0);
+        const labelText = 'NO. OF 90-MINUTE SESSIONS';
+        if (value && value.textContent !== sessions) value.textContent = sessions;
+        if (label && label.textContent !== labelText) label.textContent = labelText;
       }
     }
     const progress = document.getElementById('dailyBar');
-    if (progress) progress.style.width = `${Math.min(100, (data.daily.seconds / SESSION_SECONDS) * 100)}%`;
-    const settings = document.getElementById('settings');
-    if (settings) {
-      const heading = [...settings.querySelectorAll('h3')].find(item => item.textContent.includes('Study limits'));
+    if (progress) {
+      const width = `${Math.min(100, (data.daily.seconds / SESSION_SECONDS) * 100)}%`;
+      if (progress.style.width !== width) progress.style.width = width;
+    }
+    const settingsPage = document.getElementById('settings');
+    if (settingsPage) {
+      const heading = [...settingsPage.querySelectorAll('h3')].find(item => item.textContent.includes('Study limits'));
       if (heading) {
         const firstParagraph = heading.parentElement.querySelector('p') || heading.nextElementSibling;
-        if (firstParagraph) firstParagraph.innerHTML = `No. of 90 minute sessions completed today: <b>${data.daily.sessions || 0}</b>. Each session is 90 minutes.`;
+        const text = `No. of 90-minute sessions completed today: ${data.daily.sessions || 0}. Each session is 90 minutes.`;
+        if (firstParagraph && firstParagraph.textContent !== text) firstParagraph.textContent = text;
       }
     }
   }
@@ -97,11 +100,6 @@
     originalRenderHome();
     refreshSessionUI();
   };
-
-  // Keep the updated session label even if the original page refreshes its dashboard.
-  const homeObserver = new MutationObserver(refreshSessionUI);
-  const home = document.getElementById('home');
-  if (home) homeObserver.observe(home, { childList: true, subtree: true, characterData: true });
 
   const settings = document.getElementById('settings');
   settings.insertAdjacentHTML('beforeend', `<div class="section" id="studyGateSettings"><h3>Study-to-unlock</h3><label><input id="studyGateToggle" type="checkbox"> Require a revision or a correct quiz answer after each 90-minute session</label><p class="muted small">This only gates access inside RevHub. Android does not allow this app to control the whole phone lock screen.</p></div>`);

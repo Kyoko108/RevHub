@@ -72,8 +72,11 @@ class MainActivity : Activity() {
     private fun injectEnhancements(view: WebView) {
         val enhancements = assets.open("enhancements.js").bufferedReader().use { it.readText() }
         val screenshotQuiz = assets.open("screenshot-quiz.js").bufferedReader().use { it.readText() }
+        val studyFeedback = assets.open("study-feedback.js").bufferedReader().use { it.readText() }
         view.evaluateJavascript(enhancements) {
-            view.evaluateJavascript(screenshotQuiz, null)
+            view.evaluateJavascript(screenshotQuiz) {
+                view.evaluateJavascript(studyFeedback, null)
+            }
         }
     }
 

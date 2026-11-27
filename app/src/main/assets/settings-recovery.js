@@ -1,43 +1,58 @@
 (() => {
   const gate = document.getElementById('studyGate');
+
+  // A stale saved lock must never leave the app's full-screen gate covering
+  // navigation. This recovery script runs after the main app and its add-ons.
+  localStorage.setItem('rh-study-gate-locked', 'false');
+  localStorage.setItem('rh-study-gate-enabled', 'false');
+  gate?.classList.add('hidden');
+
   if (gate) {
-    // Do not let the full-screen lock backdrop intercept app navigation taps.
     const style = document.createElement('style');
     style.id = 'studyGateNavigationRecovery';
     style.textContent = `
-      #studyGate { pointer-events: none !important; }
+      #studyGate, #breakScreen { display: none !important; pointer-events: none !important; }
       #studyGate .gate-card { pointer-events: auto !important; }
     `;
     if (!document.getElementById(style.id)) document.head.appendChild(style);
-
-    const actions = gate.querySelector('.gate-card .row');
-    if (actions && !document.getElementById('gateSettings')) {
-      const button = document.createElement('button');
-      button.id = 'gateSettings';
-      button.className = 'secondary';
-      button.textContent = 'Open Settings';
-      button.addEventListener('click', () => openPage('settings'));
-      actions.appendChild(button);
-    }
   }
 
   function openPage(page) {
-    // Selecting a tab is an explicit request to continue using the app. Clear
-    // any stale study lock so navigation doesn't silently appear unresponsive.
+    // Clear the lock before calling the app router, then use a DOM fallback if
+    // a stale injected wrapper prevents the page from switching.
     localStorage.setItem('rh-study-gate-locked', 'false');
     gate?.classList.add('hidden');
-    if (typeof show === 'function') show(page);
+    if (typeof show === 'function') {
+      try { show(page); } catch (error) { console.error('Navigation failed', error); }
+    }
+
+    const selected = document.getElementById(page);
+    if (!selected) return;
+    if (selected.classList.contains('hidden')) {
+      document.querySelectorAll('.page').forEach(section => section.classList.toggle('hidden', section !== selected));
+      document.querySelectorAll('.nav [data-go]').forEach(button => button.classList.toggle('active', button.getAttribute('data-go') === page));
+    }
+    window.scrollTo(0, 0);
   }
 
-  // Run in capture phase so this still works if another injected script or a
-  // stale lock handler interferes with the normal data-go click listeners.
+  // Capture navigation taps before older or injected handlers can swallow them.
   document.addEventListener('click', event => {
-    const target = event.target instanceof Element ? event.target.closest('[data-go]') : null;
-    if (!target) return;
-    const page = target.getAttribute('data-go');
+    const element = event.target instanceof Element ? event.target.closest('[data-go]') : null;
+    if (!element) return;
+    const page = element.getAttribute('data-go');
     if (!page) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     openPage(page);
   }, true);
+
+  // Also keep the main nav reachable if WebView touch synthesis is inconsistent.
+  document.querySelectorAll('.nav [data-go]').forEach(button => {
+    button.addEventListener('touchend', event => {
+      const page = button.getAttribute('data-go');
+      if (!page) return;
+      event.preventDefault();
+      openPage(page);
+    }, { passive: false });
+  });
 })();

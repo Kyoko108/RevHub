@@ -1,31 +1,28 @@
 (() => {
   const gate = document.getElementById('studyGate');
 
-  // A stale saved lock must never leave the app's full-screen gate covering
-  // navigation. This recovery script runs after the main app and its add-ons.
+  // Recovery from a persisted study lock that could otherwise cover the UI.
   localStorage.setItem('rh-study-gate-locked', 'false');
   localStorage.setItem('rh-study-gate-enabled', 'false');
   gate?.classList.add('hidden');
 
-  if (gate) {
-    const style = document.createElement('style');
-    style.id = 'studyGateNavigationRecovery';
-    style.textContent = `
-      #studyGate, #breakScreen { display: none !important; pointer-events: none !important; }
-      #studyGate .gate-card { pointer-events: auto !important; }
-    `;
-    if (!document.getElementById(style.id)) document.head.appendChild(style);
-  }
+  const recoveryStyle = document.createElement('style');
+  recoveryStyle.id = 'revHubInteractionRecovery';
+  recoveryStyle.textContent = `
+    #studyGate, #breakScreen { display:none !important; pointer-events:none !important; }
+    #studyGate .gate-card { pointer-events:auto !important; }
+    #revision #markRevised, #revision #markNeedsRevision,
+    #revision #conceptDone, #revision #conceptNotDone { display:none !important; }
+    #revision .reel-actions { display:none !important; }
+  `;
+  if (!document.getElementById(recoveryStyle.id)) document.head.appendChild(recoveryStyle);
 
   function openPage(page) {
-    // Clear the lock before calling the app router, then use a DOM fallback if
-    // a stale injected wrapper prevents the page from switching.
     localStorage.setItem('rh-study-gate-locked', 'false');
     gate?.classList.add('hidden');
     if (typeof show === 'function') {
       try { show(page); } catch (error) { console.error('Navigation failed', error); }
     }
-
     const selected = document.getElementById(page);
     if (!selected) return;
     if (selected.classList.contains('hidden')) {
@@ -35,7 +32,6 @@
     window.scrollTo(0, 0);
   }
 
-  // Capture navigation taps before older or injected handlers can swallow them.
   document.addEventListener('click', event => {
     const element = event.target instanceof Element ? event.target.closest('[data-go]') : null;
     if (!element) return;
@@ -46,7 +42,6 @@
     openPage(page);
   }, true);
 
-  // Also keep the main nav reachable if WebView touch synthesis is inconsistent.
   document.querySelectorAll('.nav [data-go]').forEach(button => {
     button.addEventListener('touchend', event => {
       const page = button.getAttribute('data-go');
@@ -55,4 +50,41 @@
       openPage(page);
     }, { passive: false });
   });
+
+  // Route both reel-upload controls through the native WebView file chooser.
+  const videoInput = document.getElementById('videoInput');
+  for (const id of ['quickVideo', 'addVideo']) {
+    const button = document.getElementById(id);
+    if (!button || !videoInput) continue;
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      videoInput.accept = 'video/*';
+      videoInput.multiple = true;
+      videoInput.click();
+    }, true);
+  }
+
+  // Keep the practice timer visibly live; reset its starting point when a new
+  // question is rendered by the app's existing renderer.
+  const practiceCard = document.getElementById('practiceCard');
+  if (practiceCard && typeof MutationObserver !== 'undefined') {
+    let lastQuestion = '';
+    new MutationObserver(() => {
+      const question = practiceCard.querySelector('.question')?.textContent?.trim() || '';
+      if (question && question !== lastQuestion) {
+        lastQuestion = question;
+        questionStarted = Date.now();
+      }
+    }).observe(practiceCard, { childList: true, subtree: true, characterData: true });
+  }
+
+  setInterval(() => {
+    const timer = document.getElementById('questionTimer');
+    const practice = document.getElementById('practice');
+    if (!timer || !practice || practice.classList.contains('hidden')) return;
+    if (!Number.isFinite(questionStarted) || questionStarted <= 0) questionStarted = Date.now();
+    const elapsed = Math.max(0, Math.floor((Date.now() - questionStarted) / 1000));
+    timer.textContent = typeof fmt === 'function' ? fmt(elapsed) : `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+  }, 1000);
 })();

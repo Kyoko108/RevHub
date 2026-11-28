@@ -15,6 +15,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -222,6 +224,25 @@ private class RevHubNativeAssetStorage(context: Context) {
 
     @JavascriptInterface
     fun hasAsset(id: String): Boolean = validId(id) && assetFile(id).isFile
+
+    @JavascriptInterface
+    fun getAssetInventoryJson(): String {
+        return try {
+            val result = JSONArray()
+            if (assetDirectory.exists()) {
+                assetDirectory.listFiles()?.filter { it.isFile && it.name.endsWith(".bin") }?.forEach { file ->
+                    val id = file.name.removeSuffix(".bin")
+                    if (validId(id)) {
+                        result.put(JSONObject().put("id", id).put("size", file.length()))
+                    }
+                }
+            }
+            result.toString()
+        } catch (error: Exception) {
+            fail(error)
+            "[]"
+        }
+    }
 
     @JavascriptInterface
     fun getAssetSize(id: String): Double =

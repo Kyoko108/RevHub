@@ -221,6 +221,7 @@ async function removeOrphanedMedia(){
 $('refreshStorage').onclick=refreshStorageManager;
 $('showLargeFiles').onclick=renderLargestStorageFiles;
 $('cleanOrphans').onclick=removeOrphanedMedia;
+document.querySelectorAll('[data-go="settings"]').forEach(button=>button.addEventListener('click',()=>setTimeout(refreshStorageManager,0)));
 
 // Active foreground usage only; enforce 90-minute cap and daily window.
 setInterval(()=>{if(document.visibilityState==='visible'&&appActive){if(timeAllowed()&&data.daily.seconds<5400){data.daily.seconds++;if(data.daily.seconds%5===0)save()}else if(data.daily.seconds>=5400){toast('Daily 90-minute limit reached.');show('home');appActive=false}}renderHome();if($('questionTimer')&&!$('practice').classList.contains('hidden')&&questionStarted)$('questionTimer').textContent=fmt(Math.floor((Date.now()-questionStarted)/1000))},1000);document.addEventListener('visibilitychange',()=>{appActive=document.visibilityState==='visible'});

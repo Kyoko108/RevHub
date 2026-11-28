@@ -57,6 +57,7 @@
     const button = document.getElementById(id);
     if (!button || !videoInput) continue;
     button.addEventListener('click', event => {
+      if (typeof canManageContent === 'function' && !canManageContent()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       videoInput.accept = 'video/*';

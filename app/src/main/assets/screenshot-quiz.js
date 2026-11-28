@@ -121,7 +121,7 @@
   if (addImage) {
     addImage.textContent = '＋ Choose screenshots';
     // Use the native system photo picker directly; no browser confirm() alert.
-    addImage.onclick = () => $('imageInput')?.click();
+    addImage.onclick = () => { if (typeof canManageContent === 'function' && !canManageContent()) return; $('imageInput')?.click(); };
   }
 
   function parseScreenshotText(text) {
@@ -230,6 +230,7 @@
 
   const imageInput = $('imageInput');
   if (imageInput) imageInput.onchange = async event => {
+    if (typeof canManageContent === 'function' && !canManageContent()) { event.target.value = ''; return; }
     const input = event.target;
     const files = Array.from(input.files || []).filter(file => file.type.startsWith('image/'));
     if (!files.length) { input.value = ''; return; }
